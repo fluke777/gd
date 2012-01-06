@@ -1,0 +1,98 @@
+#!/usr/bin/env ruby
+# 1.9 adds realpath to resolve symlinks; 1.8 doesn't
+# have this method, so we add it so we get resolved symlinks
+# and compatibility
+unless File.respond_to? :realpath
+  class File #:nodoc:
+    def self.realpath path
+      return realpath(File.readlink(path)) if symlink?(path)
+      path
+    end
+  end
+end
+$: << File.expand_path(File.dirname(File.realpath(__FILE__)) + '/../lib')
+require 'rubygems'
+require 'gli'
+require 'gd_version'
+require 'gooddata'
+require 'pp'
+require 'logger'
+
+include GLI
+
+program_desc 'GoodData CLI -> experimental when it is reasonable complete will go to gooddata Gem'
+
+version Gd::VERSION
+
+desc 'Project pid where you want to work'
+default_value nil
+arg_name 'pid'
+flag [:i,:pid]
+
+desc 'User name'
+default_value nil
+arg_name 'user'
+flag [:u,:user]
+
+desc 'Password'
+default_value nil
+arg_name 'password'
+flag [:p,:password]
+
+
+desc 'Validates a project'
+arg_name 'Describe arguments to validate here'
+command :validate do |c|
+  c.desc 'Prints the error messages on the console'
+  c.switch :v
+
+  c.action do |global_options,options,args|
+    # GoodData.logger = Logger.new(STDOUT)
+    GoodData.connect global_options[:user], global_options[:password]
+    GoodData.use global_options[:pid]
+    
+    result = GoodData.post("/gdc/md/#{global_options[:pid]}/validate", {
+      "validateProject" => [ 'LDM', 'PDM', 'IO']
+    })
+    status = GoodData.get(result["uri"])["validateResult"]["state"]
+    while status != "FINISHED"
+      sleep 5
+      validation_result = GoodData.get(result["uri"])
+      status = validation_result["validateResult"]["state"]
+    end
+    
+    if options[:v]
+      pp validation_result
+      # validation_result["validation_result"]["messages"].each do |m|
+      #   messages = m['messages']
+      #   ps = m['parameters'].map {|v| v.values} unless m['parameters'].nil?
+      #   STDOUT.puts sprintf message, *ps
+      # end
+    end
+    exit 1 if validation_result["validateResult"]["status"] != "OK"
+  end
+end
+
+pre do |global,command,options,args|
+  # Pre logic here
+  # Return true to proceed; false to abourt and not call the
+  # chosen command
+  # Use skips_pre before a command to skip this block
+  # on that command only
+  true
+end
+
+post do |global,command,options,args|
+  # Post logic here
+  # Use skips_post before a command to skip this
+  # block on that command only
+end
+
+on_error do |exception|
+  puts "error"
+  # Error logic here
+  # return false to skip default error handling
+  false
+end
+
+exit GLI.run(ARGV)

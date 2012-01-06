@@ -1,0 +1,5 @@
+= gd
+
+Generate this with
+    gd rdoc
+After you have described your command line interface
