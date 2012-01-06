@@ -17,6 +17,7 @@ require 'gd_version'
 require 'gooddata'
 require 'pp'
 require 'logger'
+require 'rainbow'
 
 include GLI
 
@@ -61,13 +62,17 @@ command :validate do |c|
       status = validation_result["validateResult"]["state"]
     end
     
+    result = validation_result["validateResult"]["status"] == "OK"
+    
     if options[:v]
       pp validation_result
-      # validation_result["validation_result"]["messages"].each do |m|
-      #   messages = m['messages']
-      #   ps = m['parameters'].map {|v| v.values} unless m['parameters'].nil?
-      #   STDOUT.puts sprintf message, *ps
-      # end
+      
+      if result
+        puts "PASS".color :green
+      else
+        puts "FAIL".color :red
+      end
+      
     end
     exit 1 if validation_result["validateResult"]["status"] != "OK"
   end
