@@ -1,6 +1,6 @@
 = gd
 
-This is a small project that tries to enable some basic GD tasks to be accessible through CLI. It is work in progress. New stuff is added as needed. If you got something interesting in mind let me know at svarovsky.tomas@gmail.com
+This is a small project that tries to enable some basic GD tasks to be accessible through CLI. It is still work in progress. If you got something interesting in mind let me know at svarovsky.tomas@gmail.com
 
 == Installation
   git clone git://github.com/fluke777/gd.git
@@ -39,6 +39,23 @@ If you want further information about the command use help
   gd help command
 
 This should provide brief but useful information about usage of the command.
+
+I tried to automate some typical tasks and tried to make the tool behave so it could be used in the UNIX way. I assume that credentials are set in a way you can read below in following examples.
+
+You can easily find out how many people are there in the project 
+
+  gd list_users | wc -l
+
+How many people are there from the company by excluding gooddata users
+
+  gd list_users | grep -v gooddata.com
+
+How many admins does the project sport?
+
+  gd list_users | cut -d, -f5 | grep adminRole | wc -l
+
+Well this one may break if you got commas in names but yeah
+
 
 == Credentials
 
