@@ -2,13 +2,13 @@
 
 This is a small project that tries to enable some basic GD tasks to be accessible through CLI. It is work in progress. I add stuff that I need myself.
 
-Installation
+== Installation
 git clone git://github.com/fluke777/gd.git
 cd gd
 rake gem
 sudo gem install pkg/gd-0.0.1.gem
 
-Usage
+== Usage
 I tried to make this as easy to use as possible. You can get the list of commands by running
 
   gd
@@ -24,10 +24,14 @@ You can see that at this moment you can do numerous things
   list_roles           
   list_users           
   project_stash        
+  project_stash_add    
   project_stash_default
+  project_stash_remove 
   set_role             
   user_stash           
+  user_stash_add       
   user_stash_default   
+  user_stash_remove    
   validate
 
 If you want further information about the command use help
@@ -36,7 +40,7 @@ If you want further information about the command use help
 
 This should provide brief but useful information about usage of the command.
 
-Credentials
+== Credentials
 
 At the moment there are 3 global parameters that you need to provide for most commands to work. That is gooddata login, password and project. This is great for scripts but awkward for interactive use. You can set the current project and user credentials in stash so you can work more interactively.
 
