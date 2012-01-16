@@ -1,6 +1,68 @@
 = gd
 
-Describe your project here
+This is a small project that tries to enable some basic GD tasks to be accessible through CLI. It is work in progress. I add stuff that I need myself.
 
-:include:gd.rdoc
+Installation
+git clone git://github.com/fluke777/gd.git
+cd gd
+rake gem
+sudo gem install pkg/gd-0.0.1.gem
 
+Usage
+I tried to make this as easy to use as possible. You can get the list of commands by running
+
+  gd
+
+You can see that at this moment you can do numerous things
+
+  clone_project        
+  create_project       
+  create_user          
+  delete_user          
+  help                 
+  list_domain_users    
+  list_roles           
+  list_users           
+  project_stash        
+  project_stash_default
+  set_role             
+  user_stash           
+  user_stash_default   
+  validate
+
+If you want further information about the command use help
+
+  gd help command
+
+This should provide brief but useful information about usage of the command.
+
+Credentials
+
+At the moment there are 3 global parameters that you need to provide for most commands to work. That is gooddata login, password and project. This is great for scripts but awkward for interactive use. You can set the current project and user credentials in stash so you can work more interactively.
+
+  gd user_stash_add login password
+  
+or just
+
+  gd user_stash_add
+
+and it will ask you necessary questions. Similarly you can use
+
+  gd user_stash_remove
+
+The same is possible with projects with commands
+
+  gd project_stash_add
+  gd project_stash_remove
+
+You can list the stored values by
+
+  gd project_stash
+  gd user_stash
+
+You can pick current project or credentials by issuing
+
+  gd project_stash_default project_name
+  gd user_stash_default login
+
+All this inormation is stored in ~/.gd and it is in plain JSON so you can edit it by hand if you please.

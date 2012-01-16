@@ -20,6 +20,7 @@ require 'gooddata'
 require 'pp'
 require 'logger'
 require 'rainbow'
+require 'highline/import'
 
 include GLI
 
@@ -139,6 +140,7 @@ end
 
 desc 'List stored projects'
 arg_name 'List the projects you got stashed in a stash'
+skips_pre
 command :project_stash do |c|
 
   c.action do |global_options,options,args|
@@ -148,8 +150,44 @@ command :project_stash do |c|
   end
 end
 
+desc 'Add stored project'
+arg_name 'name project_id'
+skips_pre
+command :project_stash_add do |c|
+
+  c.action do |global_options,options,args|
+    project_title   = args[0] || ask("Project Title?")
+    project_id      = args[1] || ask("Project Id?")
+    
+    config = Gd::Commands.load_config
+    projects = config["projects"]
+    projects << {
+      :pid => project_id,
+      :title => project_title,
+      :default => false
+    }
+    Gd::Commands.save_config(config)
+  end
+end
+
+desc 'Remove stored project'
+arg_name 'name'
+skips_pre
+command :project_stash_remove do |c|
+
+  c.action do |global_options,options,args|
+    project_title   = args[0] || ask("Project?")
+    config = Gd::Commands.load_config
+    config["projects"] = config["projects"].reject {|p| p["title"] == project_title}
+    Gd::Commands.save_config(config)
+  end
+end
+
+
+
 desc 'Change default stored project'
 arg_name 'List the projects you got stashed in a stash'
+skips_pre
 command :project_stash_default do |c|
 
   c.action do |global_options,options,args|
@@ -164,6 +202,7 @@ end
 
 desc 'List stored users'
 arg_name 'List the users you got stashed in a stash'
+skips_pre
 command :user_stash do |c|
 
   c.action do |global_options,options,args|
@@ -174,8 +213,42 @@ command :user_stash do |c|
 end
 
 
+desc 'Add stored user'
+arg_name 'login password'
+skips_pre
+command :user_stash_add do |c|
+
+  c.action do |global_options,options,args|
+    login     = args[0] || ask("Login?")
+    password  = args[1] || ask("Password?")
+    
+    config = Gd::Commands.load_config
+    users = config["users"]
+    users << {
+      :login => login,
+      :password => password,
+      :default => false
+    }
+    Gd::Commands.save_config(config)
+  end
+end
+
+desc 'Remove stored user'
+arg_name 'login'
+skips_pre
+command :user_stash_remove do |c|
+
+  c.action do |global_options,options,args|
+    login   = args[0] || ask("Login?")
+    config = Gd::Commands.load_config
+    config["users"] = config["users"].reject {|p| p["login"] == login}
+    Gd::Commands.save_config(config)
+  end
+end
+
 desc 'Change default stored user'
 arg_name 'List the users you got stashed in a stash'
+skips_pre
 command :user_stash_default do |c|
 
   c.action do |global_options,options,args|
@@ -283,7 +356,7 @@ post do |global,command,options,args|
 end
 
 on_error do |exception|
-  # pp exception.backtrace
+  pp exception.backtrace
   # puts "error"
   # Error logic here
   # return false to skip default error handling

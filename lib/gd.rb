@@ -3,9 +3,17 @@ require 'active_support/core_ext/hash'
 module Gd
   module Commands
 
+    CONFIG_TEMPLATE = {
+      :projects => [],
+      :users => []
+    }
+
     def self.load_config
       home = `echo $HOME`.chomp
-      config = JSON.parse(File.read("#{home}/.gd"))
+      path = "#{home}/.gd"
+      # pp CONFIG_TEMPLATE
+      File.open(path, 'w') {|f| f.write(JSON.pretty_generate(CONFIG_TEMPLATE))} unless File.exists?(path)
+      JSON.parse(File.read(path))
     end
 
     def self.save_config(config)

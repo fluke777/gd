@@ -8,10 +8,11 @@ spec = Gem::Specification.new do |s|
   s.homepage = 'http://svarovsky-tomas.com/'
   s.platform = Gem::Platform::RUBY
   s.summary = 'Suite of command line helpers to do the common tasks with gooddata an addition to GoodData gem. Should supersede its command line capabilities'
-# Add your other files here if you make them
+  s.description = 'CLI interface to GoodData API'
   s.files = %w(
 bin/gd
 lib/gd_version.rb
+lib/gd.rb
   )
   s.require_paths << 'lib'
   s.has_rdoc = true
@@ -22,4 +23,8 @@ lib/gd_version.rb
   s.add_development_dependency('rake')
   s.add_development_dependency('rdoc')
   s.add_dependency('gooddata')
+  s.add_dependency('rainbow')
+  s.add_dependency('gli')
+  s.add_dependency('highline')
+  s.add_dependency('activesupport')
 end
