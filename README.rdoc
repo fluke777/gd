@@ -74,32 +74,34 @@ And some more ....
 
 At the moment there are 3 global parameters that you need to provide for most commands to work. That is gooddata login, password and project. This is great for scripts but awkward for interactive use. You can set the current project and user credentials in stash so you can work more interactively and with less typing. I am thinking about moving project id from the global parameters since it is not usually needed so this might change in future releases.
 
-  gd user_stash_add login password
+You can add your account
+
+  gd user_stash_add joe@example.com 1234
   
 or just
 
   gd user_stash_add
 
-and it will ask you necessary questions. Similarly you can use
+and it will ask you necessary questions. You can have more than one. In such case one is marked as default and that is the one that will be used. You can switch between those by using
+
+  gd user_stash_default
+
+Similarly you can use
 
   gd user_stash_remove
 
 The same is possible with projects with commands
 
   gd project_stash_add
+  gd project_stash_default
   gd project_stash_remove
 
-You can list the stored values by
+Check help for details. You can list the stored values by (the default value is marked by asterisk)
 
   gd project_stash
   gd user_stash
 
-You can pick current project or credentials by issuing
-
-  gd project_stash_default project_name
-  gd user_stash_default login
-
-All this information is stored in ~/.gd and it is in plain JSON so you can edit it by hand if you please.
+All this information is stored in ~/.gd and it is in plain JSON so you can edit it by hand if you please. Be aware that it is not encrypted in any way so if you are concerned about this stuff keep it in mind.
 
 == How you can help?
 Let me know if something does not work is poorly documented or you like/dislike anything. You can reach me at svarovsky.tomas@gmail.com
