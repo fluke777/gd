@@ -16,11 +16,6 @@ require 'rubygems'
 require 'gli'
 require 'gd_version'
 require 'gd'
-require 'gooddata'
-require 'pp'
-require 'logger'
-require 'rainbow'
-require 'highline/import'
 
 include GLI
 

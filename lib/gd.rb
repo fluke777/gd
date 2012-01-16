@@ -1,4 +1,9 @@
 require 'active_support/core_ext/hash'
+require 'gooddata'
+require 'pp'
+require 'logger'
+require 'rainbow'
+require 'highline/import'
 
 module Gd
   module Commands
