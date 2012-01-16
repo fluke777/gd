@@ -334,7 +334,7 @@ pre do |global_options,command,options,args|
 
     default_project = projects.find {|p| p["default"]}
 
-    GoodData.logger = Logger.new(STDOUT)
+    # GoodData.logger = Logger.new(STDOUT)
 
     GoodData.connect global_options[:user] || default_user["login"], global_options[:password] || default_user["password"], nil, :timeout => 0
     if global_options[:pid].nil?
