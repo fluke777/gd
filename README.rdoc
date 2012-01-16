@@ -42,6 +42,10 @@ This should provide brief but useful information about usage of the command.
 
 I tried to automate some typical tasks and tried to make the tool behave so it could be used in the UNIX way. I assume that credentials are set in a way you can read below in following examples.
 
+Finding some useful information about a user by an email address is a snap (which cannot be said about UI)
+
+  gd list_users | grep joe@example.com
+
 You can easily find out how many people are there in the project 
 
   gd list_users | wc -l
@@ -56,10 +60,19 @@ How many admins does the project sport?
 
 Well this one may break if you got commas in names but yeah
 
+Maybe you are interested in whether your project is valid
+
+  gd validate
+
+Since it is following the principle "Keep quiet if everything is ok" you should find out that it worked by inspecting the exit code
+
+  echo $?
+
+And some more ....
 
 == Credentials
 
-At the moment there are 3 global parameters that you need to provide for most commands to work. That is gooddata login, password and project. This is great for scripts but awkward for interactive use. You can set the current project and user credentials in stash so you can work more interactively. I am thinking about moving project id from the global parameters since it is not usually needed so this might change in future releases.
+At the moment there are 3 global parameters that you need to provide for most commands to work. That is gooddata login, password and project. This is great for scripts but awkward for interactive use. You can set the current project and user credentials in stash so you can work more interactively and with less typing. I am thinking about moving project id from the global parameters since it is not usually needed so this might change in future releases.
 
   gd user_stash_add login password
   
@@ -89,4 +102,4 @@ You can pick current project or credentials by issuing
 All this information is stored in ~/.gd and it is in plain JSON so you can edit it by hand if you please.
 
 == How you can help?
-Let me know if something does not work is poorly documented or you like/dislike something. You can reach me at svarovsky.tomas@gmail.com
+Let me know if something does not work is poorly documented or you like/dislike anything. You can reach me at svarovsky.tomas@gmail.com
