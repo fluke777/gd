@@ -351,7 +351,7 @@ post do |global,command,options,args|
 end
 
 on_error do |exception|
-  pp exception.backtrace
+  # pp exception.backtrace
   # puts "error"
   # Error logic here
   # return false to skip default error handling
