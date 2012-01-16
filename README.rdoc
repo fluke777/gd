@@ -1,12 +1,12 @@
 = gd
 
-This is a small project that tries to enable some basic GD tasks to be accessible through CLI. It is work in progress. I add stuff that I need myself.
+This is a small project that tries to enable some basic GD tasks to be accessible through CLI. It is work in progress. New stuff is added as needed. If you got something interesting in mind let me know at svarovsky.tomas@gmail.com
 
 == Installation
-git clone git://github.com/fluke777/gd.git
-cd gd
-rake gem
-sudo gem install pkg/gd-0.0.1.gem
+  git clone git://github.com/fluke777/gd.git
+  cd gd
+  rake gem
+  sudo gem install pkg/gd-0.0.1.gem
 
 == Usage
 I tried to make this as easy to use as possible. You can get the list of commands by running
@@ -42,7 +42,7 @@ This should provide brief but useful information about usage of the command.
 
 == Credentials
 
-At the moment there are 3 global parameters that you need to provide for most commands to work. That is gooddata login, password and project. This is great for scripts but awkward for interactive use. You can set the current project and user credentials in stash so you can work more interactively.
+At the moment there are 3 global parameters that you need to provide for most commands to work. That is gooddata login, password and project. This is great for scripts but awkward for interactive use. You can set the current project and user credentials in stash so you can work more interactively. I am thinking about moving project id from the global parameters since it is not usually needed so this might change in future releases.
 
   gd user_stash_add login password
   
@@ -69,4 +69,7 @@ You can pick current project or credentials by issuing
   gd project_stash_default project_name
   gd user_stash_default login
 
-All this inormation is stored in ~/.gd and it is in plain JSON so you can edit it by hand if you please.
+All this information is stored in ~/.gd and it is in plain JSON so you can edit it by hand if you please.
+
+== How you can help?
+Let me know if something does not work is poorly documented or you like/dislike something. You can reach me at svarovsky.tomas@gmail.com
