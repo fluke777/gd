@@ -12,8 +12,10 @@ unless File.respond_to? :realpath
 end
 $: << File.expand_path(File.dirname(File.realpath(__FILE__)) + '/../lib')
 require 'rubygems'
+# require 'bundler/setup'
 require 'gli'
 require 'gd_version'
+require 'gd'
 require 'gooddata'
 require 'pp'
 require 'logger'
@@ -41,49 +43,236 @@ arg_name 'password'
 flag [:p,:password]
 
 
-desc 'Validates a project'
-arg_name 'Describe arguments to validate here'
+desc 'Validate a project'
 command :validate do |c|
   c.desc 'Prints the error messages on the console'
-  c.switch :v
+  c.switch [:v, :verbose]
 
   c.action do |global_options,options,args|
-    # GoodData.logger = Logger.new(STDOUT)
-    GoodData.connect global_options[:user], global_options[:password]
-    GoodData.use global_options[:pid]
+    verbose = options[:verbose]
     
-    result = GoodData.post("/gdc/md/#{global_options[:pid]}/validate", {
-      "validateProject" => [ 'LDM', 'PDM', 'IO']
-    })
-    status = GoodData.get(result["uri"])["validateResult"]["state"]
-    while status != "FINISHED"
-      sleep 5
-      validation_result = GoodData.get(result["uri"])
-      status = validation_result["validateResult"]["state"]
-    end
-    
-    result = validation_result["validateResult"]["status"] == "OK"
-    
-    if options[:v]
-      pp validation_result
-      
+    result, description = Gd::Commands.validate_project(global_options[:pid])
+    if verbose
+      pp description
       if result
         puts "PASS".color :green
       else
         puts "FAIL".color :red
       end
-      
     end
-    exit 1 if validation_result["validateResult"]["status"] != "OK"
+    
+    exit 1 unless result
   end
 end
 
-pre do |global,command,options,args|
+desc 'List users in project'
+arg_name 'This command will output the list of users to the standard output. It prints login, first name, last name and status.'
+command :list_users do |c|
+  c.action do |global_options,options,args|
+    if !global_options[:pid]
+      fail "You need to provide a project id. Use -i pid"
+    end
+    
+    roles = roles = Gd::Commands.get_roles(global_options[:pid])
+    
+    users = Gd::Commands.get_users(global_options[:pid])
+    users.each do |u|
+      role_name = nil
+      roles.find {|k,v| role_name = k if v[:uri] == u[:role]}
+      puts "#{u[:login]},#{u[:uri]},#{u[:first_name]},#{u[:last_name]},#{role_name}"
+    end
+  end
+end
+
+
+desc 'List roles in project'
+arg_name 'This command will output the list of roles in a project.'
+command :list_roles do |c|
+  c.action do |global_options,options,args|
+    if !global_options[:pid]
+      fail "You need to provide a project id. Use -i pid"
+    end
+    roles = Gd::Commands.get_roles(global_options[:pid])
+    roles.each {|k,v| puts k}
+  end
+end
+
+desc 'List users in domain'
+command :list_domain_users do |c|
+  c.desc 'Domain from which the users should be printed'
+  c.flag [:d, :domain]
+
+  c.action do |global_options,options,args|
+    fail "Domain not specified. Use -d domain_name" unless options[:domain]
+    Gd::Commands.get_domain_users(options[:domain]).each do |u|
+      puts "#{u[:login]},#{u[:uri]},#{u[:first_name]},#{u[:last_name]}"
+    end
+  end
+end
+
+desc 'Create project'
+arg_name 'Create a project'
+command :create_project do |c|
+  c.action do |global_options,options,args|
+    title = args.first
+    Gd::Commands.create_project(title)
+  end
+end
+
+desc 'Clone project'
+arg_name 'Clones a project'
+command :clone_project do |c|
+  
+  c.desc 'Project will be cloned with users'
+  c.switch [:u, "with-users"]
+  
+  c.desc 'Project will be cloned with users'
+  c.switch [:d, "with-data"]
+  
+  c.action do |global_options,options,args|
+    Gd::Commands.clone_project(global_options[:pid], {
+      :with_data => options[:d],
+      :with_users => options[:u]
+    })
+  end
+end
+
+desc 'List stored projects'
+arg_name 'List the projects you got stashed in a stash'
+command :project_stash do |c|
+
+  c.action do |global_options,options,args|
+    config = Gd::Commands.load_config
+    projects = config["projects"]
+    projects.each {|u| puts u['default'] ? "* #{u["title"]},#{u["pid"]}" : "  #{u["title"]} #{u["pid"]}"}
+  end
+end
+
+desc 'Change default stored project'
+arg_name 'List the projects you got stashed in a stash'
+command :project_stash_default do |c|
+
+  c.action do |global_options,options,args|
+    title = args.first
+    config = Gd::Commands.load_config
+    projects = config["projects"]
+    projects.each {|u| u['default'] = title == u["title"] }
+    Gd::Commands.save_config(config)
+  end
+
+end
+
+desc 'List stored users'
+arg_name 'List the users you got stashed in a stash'
+command :user_stash do |c|
+
+  c.action do |global_options,options,args|
+    config = Gd::Commands.load_config
+    users = config["users"]
+    users.each {|u| puts u['default'] ? "* #{u["login"]}" : "  #{u["login"]}"}
+  end
+end
+
+
+desc 'Change default stored user'
+arg_name 'List the users you got stashed in a stash'
+command :user_stash_default do |c|
+
+  c.action do |global_options,options,args|
+    name = args.first
+    config = Gd::Commands.load_config
+    users = config["users"]
+    users.each {|u| u['default'] = name == u["login"] }
+    Gd::Commands.save_config(config)
+  end
+
+end
+
+desc 'Delete user'
+arg_name 'email'
+command :delete_user do |c|
+  c.desc 'Domain from which the user should be deleted'
+  c.flag [:d, :domain]
+
+  c.action do |global_options,options,args|
+    email = args.first 
+    fail "Domain not specified. Use -d domain_name" unless options[:domain]
+    user_to_delete = Gd::Commands.get_domain_users(options[:domain]).find {|u| u[:login] == email}
+    Gd::Commands.delete_user(user_to_delete[:uri])
+  end
+end
+
+desc 'Create a user'
+command :create_user do |c|
+
+  c.desc "File where the CSV data resides. The csv is expected to have fields login, password, first_name, last_name, sso_provider. Optionally you can provide a role field. If it is there users will have a role. Roles that are in the project could be found out by command list_roles"
+  c.flag [:i, :input]
+
+  c.desc 'Domain in which the users should be created'
+  c.flag [:d, :domain]
+
+  c.action do |global_options,options,args|
+
+    pid = global_options[:pid]
+    roles = Gd::Commands.get_roles(pid)
+
+    filename = options[:input]
+    FasterCSV.foreach(filename, :headers => true, :return_headers => false) do |row|
+      Gd::Commands.create_user(row.to_hash, options[:domain], global_options[:pid], roles)
+    end
+  end
+end
+
+desc 'Set a role to a user'
+command :set_role do |c|
+
+  c.action do |global_options,options,args|
+    email = args[0]
+    role  = args[1]
+    
+    fail "Please specify email" if email.nil?
+    fail "Please specify role" if role.nil?
+    
+    pid = global_options[:pid]
+    roles = Gd::Commands.get_roles(pid)
+    role_uri = roles[role]
+    
+    fail "No such role #{role} in project #{pid}. Use \"gd list_roles\" to get list of roles in the project."
+    
+    users = Gd::Commands.get_users(global_options[:pid])
+    user_uri = users.find {|u| u[:login] == email}
+    
+    Gd::Commands.set_role(role_uri[:user_uri], user_uri[:uri])
+    
+  end
+end
+
+
+
+pre do |global_options,command,options,args|
   # Pre logic here
   # Return true to proceed; false to abourt and not call the
   # chosen command
   # Use skips_pre before a command to skip this block
   # on that command only
+  
+  
+  if command
+    config = Gd::Commands.load_config
+    users = config["users"]
+    projects = config["projects"]
+    default_user = users.find {|u| u["default"]} if !global_options[:user]
+    default_user = users.find {|u| u["login"] == global_options[:user]} if global_options[:user] && !global_options[:password]
+
+    default_project = projects.find {|p| p["default"]}
+
+    GoodData.logger = Logger.new(STDOUT)
+
+    GoodData.connect global_options[:user] || default_user["login"], global_options[:password] || default_user["password"], nil, :timeout => 0
+    if global_options[:pid].nil?
+      global_options[:pid] = default_project["pid"] if default_project
+    end
+  end
   true
 end
 
@@ -94,10 +283,11 @@ post do |global,command,options,args|
 end
 
 on_error do |exception|
-  puts "error"
+  # pp exception.backtrace
+  # puts "error"
   # Error logic here
   # return false to skip default error handling
-  false
+  true
 end
 
 exit GLI.run(ARGV)
