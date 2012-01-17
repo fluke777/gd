@@ -305,7 +305,7 @@ command :set_role do |c|
     roles = Gd::Commands.get_roles(pid)
     role_uri = roles[role]
     
-    fail "No such role #{role} in project #{pid}. Use \"gd list_roles\" to get list of roles in the project."
+    fail "No such role #{role} in project #{pid}. Use \"gd list_roles\" to get list of roles in the project." if role_uri.nil?
     
     users = Gd::Commands.get_users(global_options[:pid])
     user_uri = users.find {|u| u[:login] == email}
