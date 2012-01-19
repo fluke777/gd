@@ -38,6 +38,11 @@ default_value nil
 arg_name 'password'
 flag [:p,:password]
 
+desc 'Enable http logger to STDOUT'
+default_value false
+arg_name 'logger'
+switch [:l, :logger]
+
 
 desc 'Validate a project'
 command :validate do |c|
@@ -334,7 +339,7 @@ pre do |global_options,command,options,args|
 
     default_project = projects.find {|p| p["default"]}
 
-    # GoodData.logger = Logger.new(STDOUT)
+    GoodData.logger = Logger.new(STDOUT) if global_options[:logger]
 
     GoodData.connect global_options[:user] || default_user["login"], global_options[:password] || default_user["password"], nil, :timeout => 0
     if global_options[:pid].nil?
