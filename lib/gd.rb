@@ -181,10 +181,10 @@ module Gd
           }
         }
         result = GoodData.post("/gdc/projects/#{pid}/users", invitation)
-      pp roles
+      # pp roles
         if users_data.has_key? "role"
           role = roles[users_data["role"]]
-        pp role
+        # pp role
           role_structure = {
             :associateUser => {
               :user => user_uri
