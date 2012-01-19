@@ -117,17 +117,24 @@ module Gd
     end
 
     def self.get_domain_users(domain)
-      result = GoodData.get("/gdc/account/domains/#{domain}/users")
-
-      result['accountSettings']['items'].map do |u|
-        as = u['accountSetting']
-        {
-          :login        => as['login'],
-          :uri          => as['links']['self'],
-          :first_name   => as['firstName'],
-          :last_name    => as['lastName']
-        }
+      next_uri = "/gdc/account/domains/#{domain}/users"
+      
+      users = []
+      while next_uri do
+        result = GoodData.get(next_uri)
+        result['accountSettings']['items'].each do |u|
+          as = u['accountSetting']
+          users << {
+            :login        => as['login'],
+            :uri          => as['links']['self'],
+            :first_name   => as['firstName'],
+            :last_name    => as['lastName']
+          }
+        end
+        
+        next_uri = result['accountSettings']['paging']['next']
       end
+      users
     end
 
     def self.get_roles(pid)
