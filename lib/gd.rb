@@ -182,8 +182,8 @@ module Gd
         }
         result = GoodData.post("/gdc/projects/#{pid}/users", invitation)
       # pp roles
-        if users_data.has_key? "role"
-          role = roles[users_data["role"]]
+        if users_data.has_key? :role
+          role = roles[users_data[:role]]
         # pp role
           role_structure = {
             :associateUser => {
