@@ -16,6 +16,7 @@ require 'rubygems'
 require 'gli'
 require 'gd_version'
 require 'gd'
+require 'fileutils'
 
 include GLI
 
@@ -258,7 +259,6 @@ command :user_stash_default do |c|
     users.each {|u| u['default'] = name == u["login"] }
     Gd::Commands.save_config(config)
   end
-
 end
 
 desc 'Delete user'
@@ -272,6 +272,33 @@ command :delete_user do |c|
     fail "Domain not specified. Use -d domain_name" unless options[:domain]
     user_to_delete = Gd::Commands.get_domain_users(options[:domain]).find {|u| u[:login] == email}
     Gd::Commands.delete_user(user_to_delete[:uri])
+  end
+end
+
+desc 'Run reports'
+command :run_reports do |c|
+
+  c.desc 'Output directory'
+  c.flag [:d, :directory]
+  default_value nil
+  
+  c.desc 'Output directory'
+  c.switch [:v, :verbose]
+  
+  c.action do |global_options,options,args|
+    dir = options[:directory] || '.'
+    absolute_path = File.expand_path(dir)
+    FileUtils::mkdir_p absolute_path
+    FileUtils::cd absolute_path do
+      query = GoodData::Report[:all]
+      query.each do |item|
+        report = GoodData::Report[item["link"]]
+        result = report.execute
+        File.open("#{absolute_path}/#{report.obj_id}", 'w') do |f|
+          f << result.to_s
+        end
+      end
+    end
   end
 end
 
@@ -345,6 +372,7 @@ pre do |global_options,command,options,args|
     if global_options[:pid].nil?
       global_options[:pid] = default_project["pid"] if default_project
     end
+    GoodData.use global_options[:pid] unless global_options[:pid].nil?
   end
   true
 end
