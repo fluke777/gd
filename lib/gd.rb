@@ -167,7 +167,7 @@ module Gd
       GoodData.post("/gdc/projects/#{pid}/users", invitation)
     end
 
-    def self.create_user(users_data, domain, pid, roles)
+    def self.create_user(users_data, domain, pid)
       users_data.symbolize_keys!
       
       account_setting = {
