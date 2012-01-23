@@ -6,7 +6,20 @@ PATH
       gli
       gooddata
       highline
+      i18n
       rainbow
+      rake
+
+PATH
+  remote: ../gooddata-ruby
+  specs:
+    gooddata (0.5.1)
+      fastercsv
+      json
+      json_pure
+      parseconfig
+      rest-client
+      rubyzip
 
 GEM
   remote: http://rubygems.org/
@@ -15,16 +28,10 @@ GEM
       multi_json (~> 1.0)
     fastercsv (1.5.4)
     gli (1.4.0)
-    gooddata (0.5.1)
-      fastercsv
-      json
-      json_pure
-      parseconfig
-      rest-client
-      rubyzip
     highline (1.6.9)
+    i18n (0.6.0)
     json (1.6.4)
-    json_pure (1.6.4)
+    json_pure (1.6.5)
     mime-types (1.17.2)
     multi_json (1.0.4)
     parseconfig (0.5.2)
@@ -41,5 +48,5 @@ PLATFORMS
 
 DEPENDENCIES
   gd!
-  rake
+  gooddata!
   rdoc

@@ -20,11 +20,12 @@ lib/gd.rb
   s.rdoc_options << '--title' << 'gd' << '--main' << 'README.rdoc' << '-ri'
   s.bindir = 'bin'
   s.executables << 'gd'
-  s.add_development_dependency('rake')
   s.add_development_dependency('rdoc')
+  s.add_dependency('rake')
   s.add_dependency('gooddata')
   s.add_dependency('rainbow')
   s.add_dependency('gli')
   s.add_dependency('highline')
   s.add_dependency('activesupport')
+  s.add_dependency('i18n')
 end

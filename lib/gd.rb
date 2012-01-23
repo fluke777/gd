@@ -152,10 +152,23 @@ module Gd
       roles
     end
 
+    def self.set_user_status(user_uri, pid, status)
+      fail "Status needs to be ENABLED or DISABLED" if status != "ENABLED" || status != "DISABLED"
+      invitation = {
+        :user => {
+          :content => {
+            :status => status
+          },
+          :links => {
+            :self => user_uri
+          }
+        }
+      }
+      GoodData.post("/gdc/projects/#{pid}/users", invitation)
+    end
 
     def self.create_user(users_data, domain, pid, roles)
       users_data.symbolize_keys!
-      
       
       account_setting = {
         :accountSetting => {
@@ -176,31 +189,30 @@ module Gd
         STDERR.puts "User #{users_data[:login]} could not be created."
         return
       end
-        user_uri = result["uri"]
-        invitation = {
-          :user => {
-            :content => {
-              :status => 'ENABLED'
-            },
-            :links => {
-              :self => user_uri
-            }
-          }
-        }
-        result = GoodData.post("/gdc/projects/#{pid}/users", invitation)
-      # pp roles
-        if users_data.has_key? :role
-          role = roles[users_data[:role]]
-        # pp role
-          role_structure = {
-            :associateUser => {
-              :user => user_uri
-            }
-          }
-          GoodData.post(role[:user_uri], role_structure)
-        end
-      
     end
+      #   user_uri = result["uri"]
+      #   invitation = {
+      #     :user => {
+      #       :content => {
+      #         :status => 'ENABLED'
+      #       },
+      #       :links => {
+      #         :self => user_uri
+      #       }
+      #     }
+      #   }
+      #   result = GoodData.post("/gdc/projects/#{pid}/users", invitation)
+      # # pp roles
+      #   if users_data.has_key? :role
+      #     role = roles[users_data[:role]]
+      #   # pp role
+      #     role_structure = {
+      #       :associateUser => {
+      #         :user => user_uri
+      #       }
+      #     }
+      #     GoodData.post(role[:user_uri], role_structure)
+      #   end
 
     def self.delete_user(uri)
       GoodData.delete(uri)
