@@ -153,7 +153,7 @@ module Gd
     end
 
     def self.set_user_status(user_uri, pid, status)
-      fail "Status needs to be ENABLED or DISABLED" if status != "ENABLED" || status != "DISABLED"
+      fail "Status needs to be ENABLED or DISABLED" if status != "ENABLED" && status != "DISABLED"
       invitation = {
         :user => {
           :content => {
