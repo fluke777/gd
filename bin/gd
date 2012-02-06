@@ -81,7 +81,7 @@ command :list_users do |c|
     users.each do |u|
       role_name = nil
       roles.find {|k,v| role_name = k if v[:uri] == u[:role]}
-      puts "#{u[:login]},#{u[:uri]},#{u[:first_name]},#{u[:last_name]},#{role_name}"
+      puts "#{u[:login]},#{u[:uri]},#{u[:first_name]},#{u[:last_name]},#{role_name},#{u[:status]}"
     end
   end
 end
