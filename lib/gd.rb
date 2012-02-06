@@ -111,7 +111,8 @@ module Gd
           :uri          => as['links']['self'],
           :first_name   => as['content']['firstname'],
           :last_name    => as['content']['lastname'],
-          :role         => as['content']['userRoles'].first
+          :role         => as['content']['userRoles'].first,
+          :status       => as['content']['status']
         }
       end
     end
