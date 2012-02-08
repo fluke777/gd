@@ -45,6 +45,18 @@ arg_name 'logger'
 switch [:l, :logger]
 
 
+desc 'Compute a report'
+command :compute_report do |c|
+  c.desc 'Computes a report and prints it to STDOUT'
+
+  c.action do |global_options,options,args|
+    puts args[0]
+    result = Gd::Commands.compute_report(args[0])
+    result.print
+  end
+end
+
+
 desc 'Validate a project'
 command :validate do |c|
   c.desc 'Prints the error messages on the console'

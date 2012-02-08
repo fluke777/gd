@@ -168,6 +168,11 @@ module Gd
       GoodData.post("/gdc/projects/#{pid}/users", invitation)
     end
 
+    def self.compute_report(id)
+      report = GoodData::Report[id]
+      report.execute
+    end
+
     def self.create_user(users_data, domain, pid)
       users_data.symbolize_keys!
       
