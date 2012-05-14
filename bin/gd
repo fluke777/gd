@@ -330,7 +330,6 @@ command :create_user do |c|
 
     filename = options[:input]
     FasterCSV.foreach(filename, :headers => true, :return_headers => false) do |row|
-      binding.pry
       Gd::Commands.create_user(row.to_hash, options[:domain], global_options[:pid], roles)
     end
   end
