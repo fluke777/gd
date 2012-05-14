@@ -173,9 +173,9 @@ module Gd
       report.execute
     end
 
-    def self.create_user(users_data, domain, pid)
+    def self.create_user(users_data, domain, pid, roles=nil)
       users_data.symbolize_keys!
-      
+
       account_setting = {
         :accountSetting => {
           :login              => users_data[:login],
@@ -195,6 +195,17 @@ module Gd
         STDERR.puts "User #{users_data[:login]} could not be created."
         return
       end
+
+      if users_data.has_key? :role
+        role = roles[users_data[:role]]
+        role_structure = {
+          :associateUser => {
+            :user => user_uri
+          }
+        }
+        GoodData.post(role[:user_uri], role_structure)
+      end
+
     end
       #   user_uri = result["uri"]
       #   invitation = {
@@ -209,16 +220,6 @@ module Gd
       #   }
       #   result = GoodData.post("/gdc/projects/#{pid}/users", invitation)
       # # pp roles
-      #   if users_data.has_key? :role
-      #     role = roles[users_data[:role]]
-      #   # pp role
-      #     role_structure = {
-      #       :associateUser => {
-      #         :user => user_uri
-      #       }
-      #     }
-      #     GoodData.post(role[:user_uri], role_structure)
-      #   end
 
     def self.delete_user(uri)
       GoodData.delete(uri)
