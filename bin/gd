@@ -317,7 +317,7 @@ end
 desc 'Create a user'
 command :create_user do |c|
 
-  c.desc "File where the CSV data resides. The csv is expected to have headers login, password, first_name, last_name, sso_provider. The order is arbitrary the values will be picked up based on header names. Optionally you can provide a role field. If it is there users will have a role. Roles that are in the project could be found out by command list_roles"
+  c.desc "File where the CSV data resides. The csv is expected to have headers login, password, first_name, last_name, sso_provider. The order is arbitrary the values will be picked up based on header names. Optionally you can provide a role field."
   c.flag [:i, :input]
 
   c.desc 'Domain in which the users should be created'

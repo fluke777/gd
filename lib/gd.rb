@@ -196,14 +196,14 @@ module Gd
         return
       end
 
-      if users_data.has_key? :role
-        role = roles[users_data[:role]]
-        role_structure = {
-          :associateUser => {
-            :user => user_uri
-          }
-        }
-        GoodData.post(role[:user_uri], role_structure)
+      # if users_data.has_key? :role
+      #   role = roles[users_data[:role]]
+      #   role_structure = {
+      #     :associateUser => {
+      #       :user => user_uri
+      #     }
+      #   }
+      #   GoodData.post(role[:user_uri], role_structure)
       end
 
     end
