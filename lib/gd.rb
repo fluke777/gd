@@ -194,6 +194,9 @@ module Gd
       rescue RestClient::BadRequest => e
         STDERR.puts "User #{users_data[:login]} could not be created."
         return
+      rescue RestClient::InternalServerError => e
+        STDERR.puts "User #{users_data[:login]} could not be created and returned 500."
+        return
       end
 
       # if users_data.has_key? :role
@@ -204,7 +207,7 @@ module Gd
       #     }
       #   }
       #   GoodData.post(role[:user_uri], role_structure)
-      end
+      # end
 
     end
       #   user_uri = result["uri"]
