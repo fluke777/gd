@@ -1,5 +1,8 @@
 # Ensure we require the local version and not one we might have installed already
-require File.join([File.dirname(__FILE__),'lib','gd_version.rb'])
+$: << File.expand_path("../lib", __FILE__)
+# $: << File.expand_path(File.dirname(File.realpath(__FILE__)) + '/../lib')
+require "gd_version"
+
 spec = Gem::Specification.new do |s| 
   s.name = 'gd'
   s.version = Gd::VERSION
@@ -28,4 +31,6 @@ lib/gd.rb
   s.add_dependency('highline')
   s.add_dependency('activesupport')
   s.add_dependency('i18n')
+  s.add_dependency('salesforce')
+  s.add_dependency('pry')
 end

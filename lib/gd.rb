@@ -4,6 +4,8 @@ require 'pp'
 require 'logger'
 require 'rainbow'
 require 'highline/import'
+require 'salesforce'
+require 'pry'
 
 module Gd
   module Commands
@@ -173,24 +175,49 @@ module Gd
       report.execute
     end
 
+    def self.create_users_from_csv(filename, pid, domain)
+      result = []
+      domain_users = {}
+      Gd::Commands.get_domain_users(domain).each do |u|
+        domain_users[u[:login]] = u
+      end
+      
+      FasterCSV.foreach(filename, :headers => true, :return_headers => false) do |row|
+        hash_row = row.to_hash
+        result << create_user(hash_row, domain, pid) unless domain_users.has_key?(user[:login])
+      end
+      result
+    end
+
+    def self.create_users_from_sf(login, password, pid, domain)
+      sf_users = grab_users_from_sf(login, password, pid)
+      domain_users = {}
+      Gd::Commands.get_domain_users(domain).each do |u|
+        domain_users[u[:login]] = u
+      end
+      
+      sf_users.reject {|user| domain_users.has_key?(user[:login])}.map {|user| create_user(user, domain, pid)}
+    end
+
     def self.create_user(users_data, domain, pid, roles=nil)
       users_data.symbolize_keys!
+
+      password = users_data[:password] ? users_data[:password] : rand(10000000000000).to_s
 
       account_setting = {
         :accountSetting => {
           :login              => users_data[:login],
-          :password           => users_data[:password],
-          :verifyPassword     => users_data[:password],
+          :password           => password,
+          :verifyPassword     => password,
           :firstName          => users_data[:first_name],
           :lastName           => users_data[:last_name],
           :ssoProvider        => users_data[:sso_provider]
         }
       }
       
-      # pp account_setting
-      # pp "/gdc/account/domains/#{domain}/users"
       begin
-        result = GoodData.post("/gdc/account/domains/#{domain}/users", account_setting)
+        GoodData.post("/gdc/account/domains/#{domain}/users", account_setting)
+        return [users_data[:login], "ok"]
       rescue RestClient::BadRequest => e
         STDERR.puts "User #{users_data[:login]} could not be created."
         return
@@ -198,31 +225,7 @@ module Gd
         STDERR.puts "User #{users_data[:login]} could not be created and returned 500."
         return
       end
-
-      # if users_data.has_key? :role
-      #   role = roles[users_data[:role]]
-      #   role_structure = {
-      #     :associateUser => {
-      #       :user => user_uri
-      #     }
-      #   }
-      #   GoodData.post(role[:user_uri], role_structure)
-      # end
-
     end
-      #   user_uri = result["uri"]
-      #   invitation = {
-      #     :user => {
-      #       :content => {
-      #         :status => 'ENABLED'
-      #       },
-      #       :links => {
-      #         :self => user_uri
-      #       }
-      #     }
-      #   }
-      #   result = GoodData.post("/gdc/projects/#{pid}/users", invitation)
-      # # pp roles
 
     def self.delete_user(uri)
       GoodData.delete(uri)
@@ -235,6 +238,168 @@ module Gd
         }
       }
       GoodData.post(role_uri, role_structure)
+    end
+
+
+    def self.roles_are_different(sf_user, gd_user)
+      return true if gd_user.nil?
+      sf_user[:role] != gd_user[:role]
+    end
+
+    def self.grab_users_from_sf(sf_login, sf_password, pid, options={})
+
+      project_specific_sf_field = options[:project_specific_sf_field] || "Role_In_GD__c"
+      project_agnostic_sf_field = options[:project_agnostic_sf_field] || "Role_In_GD_#{pid}__c"
+      begin
+        client = Salesforce::Client.new(sf_login, sf_password)
+      rescue RuntimeError => e
+        puts e.message
+        exit 1
+      end
+      # Verify SF Setup
+      # See https://confluence.gooddata.com/confluence/display/PS/Sales+force+user+synchronization for explanation
+      user_fields = client.fields('User')
+      project_specific = user_fields.include?(project_specific_sf_field) && project_specific_sf_field
+      project_agnostic = user_fields.include?(project_agnostic_sf_field) && project_agnostic_sf_field
+      field = project_specific || project_agnostic
+
+      if !project_agnostic && !project_specific then
+        puts "SF setup does not seem to be right. There is neither #{project_specific_sf_field} nor #{project_agnostic_sf_field} field in SF. Plese see https://confluence.gooddata.com/confluence/display/PS/Sales+force+user+synchronization for explanation"
+        exit 1
+      end
+
+      # puts "Grabbing data from SF"
+      data = []
+      client.grab :module => "User", :output => data, :as_hash => true, :fields => "FirstName, LastName, Email, #{field}"
+      
+      data.map do |line|
+        {
+          :first_name     => line[:FirstName],
+          :last_name      => line[:LastName],
+          :login          => line[:Email],
+          :sso_provider   => "SALESFORCE",
+          :role           => line[field.to_sym],
+          :login          => line[:Email]
+        }
+      end
+
+    end
+
+    def self.sync_users_in_project_from_sf(sf_login, sf_password, pid, domain, options={})
+      sf_users = grab_users_from_sf(sf_login, sf_password, pid, options)
+      sf_users_hash = {}
+      sf_users.each do |user|
+        sf_users_hash[user[:login]] = user if !user[:role].nil?
+      end
+      sync_users_in_project(sf_users_hash, pid, domain, options)
+    end
+
+    def self.sync_users_in_project_from_csv(file_name, pid, domain, options={})
+      csv_users = {}
+      FasterCSV.foreach(file_name, :headers => true, :return_headers => false) do |line|
+        if (!line.headers.include?('role') || (!line['role'].nil? && line['role'] != "None" ))
+          csv_users[line['login']] = {
+            :first_name     => line['first_name'],
+            :last_name      => line['last_name'],
+            :login          => line['login'],
+            :sso_provider   => line['sso_provider'],
+            :role            => line['role']
+          }
+        end
+      end
+      sync_users_in_project(csv_users, pid, domain, options)
+
+    end
+
+    def self.sync_users_in_project(users_to_sync, pid, domain, options)
+      black_list = options[:black_list] || []
+      
+      roles = roles = Gd::Commands.get_roles(pid)
+      project_users = {}
+
+      # puts "Grabbing project users from GD"
+      # transform users to a way that it can be searched fast + adding some additional info
+      Gd::Commands.get_users(pid).each do |u|
+        project_users[u[:login]] = u
+        role_name = nil
+        roles.find {|k,v| role_name = k if v[:uri] == u[:role]}
+        u[:role] = role_name
+      end
+
+      domain_users = {}
+      Gd::Commands.get_domain_users(domain).each do |u|
+        blacklisted = black_list.any? { |black_list_item| u[:login].match(black_list_item) }
+        domain_users[u[:login]] = u unless blacklisted
+      end
+
+      users_to_invite = []
+      users_to_uninvite = []
+      users_to_change_role = []
+      users_to_sync.keys.each do |login|
+        user = users_to_sync[login]
+        # If there is a user in input file that is in project and has different roles, chage the role
+        users_to_change_role  << login if project_users.has_key?(login) && roles_are_different(user, project_users[login])
+        # If there is a user in input that is not in project or he is disabled in the project enable him
+        users_to_invite       << login if !project_users.has_key?(login) || project_users[login][:status] == "DISABLED"
+      end
+
+      project_users.keys.each do |login|
+        project_user = project_users[login]
+        # if there is a user in the project which are not in the input data && this user does not match black list and is enabled => remove him
+        blacklisted = black_list.any? { |black_list_item| login.match(black_list_item) }
+        users_to_uninvite << login if !users_to_sync.has_key?(login) && !blacklisted && project_user[:status] == "ENABLED"
+      end
+
+      # EXECUTE
+      if users_to_invite.count > 0
+        puts "Inviting users"
+        users_to_invite.each do |login|
+          user = domain_users[login]
+          if user.nil?
+            puts "Cannot add user #{login}, user not in domain and probably cannot be created"
+            next
+          end
+          Gd::Commands.set_user_status(user[:uri], pid, "ENABLED")
+          puts "#{user[:login]}"
+        end
+      end
+      # refresh users in project
+      project_users = {}
+
+      # Refresh users in project so we have the latest info
+      # puts "Grabbing project users from GD"
+      Gd::Commands.get_users(pid).each do |u|
+        project_users[u[:login]] = u
+        role_name = nil
+        roles.find {|k,v| role_name = k if v[:uri] == u[:role]}
+        u[:role] = role_name
+      end
+
+      if users_to_change_role.count > 0
+        puts "Changing roles"
+        users_to_change_role.each do |login|
+          user = project_users[login]
+          if user.nil?
+            puts "Role for User #{login} cannot be changed it is not in the project"
+            next
+          end
+          role_uri = roles[users_to_sync[login][:role]]
+          new_role_name = users_to_sync[login][:role]
+          puts "#{login} - from #{user[:role]} to #{new_role_name}"
+
+          Gd::Commands.set_role(role_uri[:user_uri], user[:uri])
+        end
+      end
+
+      if users_to_uninvite.count > 0
+        puts "Disabling users"
+        users_to_uninvite.each do |login|
+          user = project_users[login]
+          Gd::Commands.set_user_status(user[:uri], pid, "DISABLED")
+          puts "#{user[:login]}"
+        end
+      end
+      
     end
 
   end

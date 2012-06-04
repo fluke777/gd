@@ -12,7 +12,6 @@ unless File.respond_to? :realpath
 end
 $: << File.expand_path(File.dirname(File.realpath(__FILE__)) + '/../lib')
 require 'rubygems'
-# require 'bundler/setup'
 require 'gli'
 require 'gd_version'
 require 'gd'
@@ -20,7 +19,7 @@ require 'fileutils'
 
 include GLI
 
-program_desc 'GoodData CLI -> experimental when it is reasonable complete will go to gooddata Gem'
+program_desc 'GoodData CLI -> experimental - when it is reasonably complete it will be merged with gooddata Gem'
 
 version Gd::VERSION
 
@@ -53,6 +52,35 @@ command :compute_report do |c|
     puts args[0]
     result = Gd::Commands.compute_report(args[0])
     result.print
+  end
+end
+
+
+desc 'Enable a user in a project. This user needs to be a member of a domain.'
+command :enable do |c|
+  c.desc 'User email to be invited.'
+  c.flag [:e, :email]
+
+  c.desc 'Domain where user resides.'
+  c.flag [:d, :domain]
+
+  c.action do |global_options,options,args|
+    email = options[:email]
+    pid = global_options[:pid]
+    domain = options[:domain]
+
+    fail "Please specify user email" if email.nil? || email.empty?
+    fail "Please specify domain" if domain.nil? || domain.empty?
+
+    users = Gd::Commands.get_domain_users(domain)
+    user = users.find {|u| u[:login] == email}
+
+    fail "User #{email} was not found in the domain #{domain}" if user.nil?
+
+    user_uri = user[:uri]
+
+    Gd::Commands.set_user_status(user_uri, pid, "ENABLED")
+
   end
 end
 
@@ -273,7 +301,7 @@ command :user_stash_default do |c|
   end
 end
 
-desc 'Delete user'
+desc 'Delete user from a domain. Use only if you know what you are doing.'
 arg_name 'email'
 command :delete_user do |c|
   c.desc 'Domain from which the user should be deleted'
@@ -284,6 +312,66 @@ command :delete_user do |c|
     fail "Domain not specified. Use -d domain_name" unless options[:domain]
     user_to_delete = Gd::Commands.get_domain_users(options[:domain]).find {|u| u[:login] == email}
     Gd::Commands.delete_user(user_to_delete[:uri])
+  end
+end
+
+desc 'Sync users from SF in the project'
+command :sync_users_with_sf do |c|
+
+  c.desc 'SF login'
+  c.flag [:l, :login]
+  default_value nil
+
+  c.desc 'SF password'
+  c.flag [:p, :password]
+
+  c.desc 'Blaclist of users. These users will not be touched during synchronization. Can be a comma separated values.'
+  c.flag [:b, :blacklist]
+
+  c.desc 'Domain in which the users should be created'
+  c.flag [:d, :domain]
+
+  c.action do |global_options,options,args|
+    pid = global_options[:pid]
+    login = options[:login]
+    pass  = options[:password]
+    domain = options[:domain]
+
+    fail "Please specify login" if login.nil? || login.empty?
+    fail "Please specify password" if pass.nil? || pass.empty?
+    fail "Please specify domain" if domain.nil? || domain.empty?
+
+    Gd::Commands.sync_users_in_project_from_sf(login, pass, pid, domain, {
+      :black_list => options[:black_list].split(',').map {|item| item.strip}
+    })
+  end
+end
+
+desc 'Sync users from CSV in the project'
+command :sync_users_with_csv do |c|
+
+  c.desc 'Input filename'
+  c.flag [:i, :input]
+  default_value nil
+
+  c.desc 'Domain in which the users should be created'
+  c.flag [:d, :domain]
+
+  c.desc 'Blaclist of users. These users will not be touched during synchronization. Can be a comma separated values.'
+  c.flag [:b, :blacklist]
+
+  c.action do |global_options,options,args|
+    pid = global_options[:pid]
+    file_name = options[:input]
+    domain = options[:domain]
+
+    fail "Please specify file name with input data" if file_name.nil? || pass.empty?
+    fail "File #{file_name} does not exist" unless File.exist?(file_name)
+    fail "Please specify domain" if domain.nil? || domain.empty?
+
+    Gd::Commands.sync_users_in_project_from_csv(file_name, pid, domain, {
+      :black_list => options[:black_list].split(',').map {|item| item.strip}
+    })
   end
 end
 
@@ -314,8 +402,8 @@ command :run_reports do |c|
   end
 end
 
-desc 'Create a user'
-command :create_user do |c|
+desc 'Sync domain with CSV'
+command :sync_domain_with_csv do |c|
 
   c.desc "File where the CSV data resides. The csv is expected to have headers login, password, first_name, last_name, sso_provider. The order is arbitrary the values will be picked up based on header names. Optionally you can provide a role field."
   c.flag [:i, :input]
@@ -326,12 +414,48 @@ command :create_user do |c|
   c.action do |global_options,options,args|
 
     pid = global_options[:pid]
-    roles = Gd::Commands.get_roles(pid)
-
+    domain = options[:domain]
     filename = options[:input]
-    FasterCSV.foreach(filename, :headers => true, :return_headers => false) do |row|
-      Gd::Commands.create_user(row.to_hash, options[:domain], global_options[:pid], roles)
-    end
+
+    fail "Please specify domain" if domain.nil? || domain.empty?
+    fail "Please specify input file name" if filename.nil? || filename.empty?
+    fail "Input filename #{filename} does not exist" unless File.exist?(filename)
+
+    Gd::Commands::create_users_from_csv(filename, pid, domain)
+
+  end
+end
+
+
+desc 'Sync domain with SF'
+command :sync_domain_with_sf do |c|
+
+  c.desc 'SF login'
+  c.flag [:l, :login]
+  default_value nil
+
+  c.desc 'SF password'
+  c.flag [:p, :password]
+
+  c.desc 'Blaclist of users. These users will not be touched during synchronization. Can be a comma separated values.'
+  c.flag [:b, :blacklist]
+
+  c.desc 'Domain in which the users should be created'
+  c.flag [:d, :domain]
+
+  c.action do |global_options,options,args|
+
+    pid = global_options[:pid]
+    login = options[:login]
+    pass  = options[:password]
+    domain = options[:domain]
+
+    fail "Please specify login" if login.nil? || login.empty?
+    fail "Please specify password" if pass.nil? || pass.empty?
+    fail "Please specify domain" if domain.nil? || domain.empty?
+
+    Gd::Commands::create_users_from_sf(login, pass, pid, domain)
+
   end
 end
 
