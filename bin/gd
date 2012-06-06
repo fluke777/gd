@@ -483,7 +483,17 @@ command :set_role do |c|
   end
 end
 
+desc 'Delete all mandatory user filters from a project'
+command :delete_all_mufs do |c|
 
+  c.action do |global_options,options,args|
+    
+    pid = global_options[:pid]
+    
+    Gd::Commands.delete_all_mufs(pid)
+    
+  end
+end
 
 pre do |global_options,command,options,args|
   # Pre logic here
