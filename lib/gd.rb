@@ -399,6 +399,13 @@ module Gd
         end
       end
       
+      def self.delete_all_mufs(pid)
+        mufs = GoodData.get("/gdc/md/#{pid}/query/userfilters")["query"]["entries"]
+        mufs.each do |muf|
+          GoodData.delete(muf["link"])
+        end
+      end
+      
     end
 
   end
