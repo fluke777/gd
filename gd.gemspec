@@ -32,5 +32,4 @@ lib/gd.rb
   s.add_dependency('activesupport')
   s.add_dependency('i18n')
   s.add_dependency('salesforce')
-  s.add_dependency('pry')
 end

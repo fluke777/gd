@@ -5,7 +5,6 @@ require 'logger'
 require 'rainbow'
 require 'highline/import'
 require 'salesforce'
-require 'pry'
 
 module Gd
   module Commands
