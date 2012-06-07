@@ -185,7 +185,7 @@ module Gd
       
       FasterCSV.foreach(filename, :headers => true, :return_headers => false) do |row|
         hash_row = row.to_hash
-        result << create_user(hash_row, domain, pid) unless domain_users.has_key?(user[:login])
+        result << create_user(hash_row, domain, pid) unless domain_users.has_key?(hash_row["login"])
       end
       result
     end
