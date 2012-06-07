@@ -9,6 +9,8 @@ require 'salesforce'
 module Gd
   module Commands
 
+    NONE = "None"
+
     CONFIG_TEMPLATE = {
       :projects => [],
       :users => []
@@ -288,7 +290,7 @@ module Gd
       sf_users = grab_users_from_sf(sf_login, sf_password, pid, options)
       sf_users_hash = {}
       sf_users.each do |user|
-        sf_users_hash[user[:login]] = user if !user[:role].nil?
+        sf_users_hash[user[:login]] = user if !user[:role].nil? && user[:role] != NONE
       end
       sync_users_in_project(sf_users_hash, pid, domain, options)
     end
@@ -296,7 +298,7 @@ module Gd
     def self.sync_users_in_project_from_csv(file_name, pid, domain, options={})
       csv_users = {}
       FasterCSV.foreach(file_name, :headers => true, :return_headers => false) do |line|
-        if (!line.headers.include?('role') || (!line['role'].nil? && line['role'] != "None" ))
+        if (!line.headers.include?('role') || (!line['role'].nil? && line['role'] != NONE ))
           csv_users[line['login']] = {
             :first_name     => line['first_name'],
             :last_name      => line['last_name'],
@@ -384,9 +386,12 @@ module Gd
           end
           role_uri = roles[users_to_sync[login][:role]]
           new_role_name = users_to_sync[login][:role]
-          puts "#{login} - from #{user[:role]} to #{new_role_name}"
-
-          Gd::Commands.set_role(role_uri[:user_uri], user[:uri])
+          if role_uri.nil?
+            puts "#{login} - Role could not be changed to #{new_role_name}"
+          else
+            puts "#{login} - from #{user[:role]} to #{new_role_name}"
+            Gd::Commands.set_role(role_uri[:user_uri], user[:uri])
+          end
         end
       end
 
@@ -399,14 +404,14 @@ module Gd
         end
       end
       
-      def self.delete_all_mufs(pid)
-        mufs = GoodData.get("/gdc/md/#{pid}/query/userfilters")["query"]["entries"]
-        mufs.each do |muf|
-          GoodData.delete(muf["link"])
-        end
-      end
-      
     end
 
+    def self.delete_all_mufs(pid)
+      mufs = GoodData.get("/gdc/md/#{pid}/query/userfilters")["query"]["entries"]
+      mufs.each do |muf|
+        GoodData.delete(muf["link"])
+      end
+    end
+    
   end
 end
