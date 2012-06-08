@@ -168,7 +168,9 @@ module Gd
           }
         }
       }
-      GoodData.post("/gdc/projects/#{pid}/users", invitation)
+      GoodData.connection.retryable(:tries => 3, :on => RestClient::ServiceUnavailable) do
+        GoodData.post("/gdc/projects/#{pid}/users", invitation)
+      end
     end
 
     def self.compute_report(id)
@@ -238,7 +240,9 @@ module Gd
           :user => user_uri
         }
       }
-      GoodData.post(role_uri, role_structure)
+      GoodData.connection.retryable(:tries => 3, :on => RestClient::ServiceUnavailable) do
+        GoodData.post(role_uri, role_structure)
+      end
     end
 
 
@@ -403,7 +407,6 @@ module Gd
           puts "#{user[:login]}"
         end
       end
-      
     end
 
     def self.delete_all_mufs(pid)
