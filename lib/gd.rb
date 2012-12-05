@@ -106,7 +106,9 @@ module Gd
     end
 
     def self.get_users(pid)
-      result = GoodData.get("/gdc/projects/#{pid}/users")
+      GoodData.connection.retryable(:tries => 3, :on => RestClient::ServiceUnavailable) do
+        result = GoodData.get("/gdc/projects/#{pid}/users")
+      end
       result["users"].map do |u|
         as = u['user']
         {
