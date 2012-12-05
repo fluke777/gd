@@ -106,10 +106,7 @@ module Gd
     end
 
     def self.get_users(pid)
-      GoodData.connection.retryable(:tries => 3, :on => RestClient::InternalServerError) do
-        result = GoodData.get("/gdc/projects/#{pid}/users")
-        puts "Testing"
-      end
+      result = GoodData.get("/gdc/projects/#{pid}/users")
       result["users"].map do |u|
         as = u['user']
         {
