@@ -334,8 +334,9 @@ module Gd
       end
 
       domain_users = {}
+      
       Gd::Commands.get_domain_users(domain).each do |u|
-        blacklisted = black_list.any? { |black_list_item| u[:login].match(black_list_item) }
+        blacklisted = black_list.any? { |black_list_item| u[:login].match(Regexp.new(Regexp.quote(black_list_item))) }
         domain_users[u[:login]] = u unless blacklisted
       end
 
@@ -355,7 +356,7 @@ module Gd
       project_users.keys.each do |login|
         project_user = project_users[login]
         # if there is a user in the project which are not in the input data && this user does not match black list and is enabled => remove him
-        blacklisted = black_list.any? { |black_list_item| login.match(black_list_item) }
+        blacklisted = black_list.any? { |black_list_item| login.match(Regexp.new(Regexp.quote(black_list_item))) }
         users_to_uninvite << login if !users_to_sync.has_key?(login) && !blacklisted && project_user[:status] == "ENABLED"
       end
 
