@@ -156,7 +156,7 @@ module Gd
       roles
     end
 
-    def self.set_user_status(user_uri, pid, status)
+    def self.set_user_status(user_uri, pid, status, options = {})
       fail "Status needs to be ENABLED or DISABLED" if status != "ENABLED" && status != "DISABLED"
       invitation = {
         :user => {
@@ -168,6 +168,8 @@ module Gd
           }
         }
       }
+      # Adding user role when inviting user to project
+      invitation[:user][:content].merge!(options)
       GoodData.connection.retryable(:tries => 3, :on => RestClient::ServiceUnavailable) do
         GoodData.post("/gdc/projects/#{pid}/users", invitation)
       end
@@ -214,7 +216,7 @@ module Gd
           :verifyPassword     => password,
           :firstName          => users_data[:first_name],
           :lastName           => users_data[:last_name],
-          :ssoProvider        => users_data[:sso_provider]
+          :ssoProvider        => users_data[:sso_provider] || nil
         }
       }
       
@@ -345,9 +347,11 @@ module Gd
         # If there is a user in input file that is in project and has different roles, chage the role
         users_to_change_role  << login if project_users.has_key?(login) && roles_are_different(user, project_users[login])
         # If there is a user in input that is not in project or he is disabled in the project enable him
-        users_to_invite       << login if !project_users.has_key?(login) || project_users[login][:status] == "DISABLED"
+        users_to_invite       << [login,user[:role]] if !project_users.has_key?(login) || project_users[login][:status] == "DISABLED"
       end
 
+     
+      
       project_users.keys.each do |login|
         project_user = project_users[login]
         # if there is a user in the project which are not in the input data && this user does not match black list and is enabled => remove him
@@ -358,13 +362,16 @@ module Gd
       # EXECUTE
       if users_to_invite.count > 0
         puts "Inviting users"
-        users_to_invite.each do |login|
-          user = domain_users[login]
+        users_to_invite.each do |value|
+          # Value contains name of the role from file
+          role_uri = ""
+          roles.find {|k,v| role_uri = v[:uri] if k == value[1]}
+          user = domain_users[value[0]]
           if user.nil?
-            puts "Cannot add user #{login}, user not in domain and probably cannot be created"
+            puts "Cannot add user #{value[0]}, user not in domain and probably cannot be created"
             next
           end
-          Gd::Commands.set_user_status(user[:uri], pid, "ENABLED")
+          Gd::Commands.set_user_status(user[:uri], pid, "ENABLED",{:userRoles => [role_uri]})
           puts "#{user[:login]}"
         end
       end

@@ -365,12 +365,12 @@ command :sync_users_with_csv do |c|
     file_name = options[:input]
     domain = options[:domain]
 
-    fail "Please specify file name with input data" if file_name.nil? || pass.empty?
+    fail "Please specify file name with input data" if file_name.nil? 
     fail "File #{file_name} does not exist" unless File.exist?(file_name)
     fail "Please specify domain" if domain.nil? || domain.empty?
 
     Gd::Commands.sync_users_in_project_from_csv(file_name, pid, domain, {
-      :black_list => options[:black_list].split(',').map {|item| item.strip}
+      :black_list => options[:blacklist].split(',').map {|item| item.strip}
     })
   end
 end
