@@ -375,6 +375,42 @@ command :sync_users_with_csv do |c|
   end
 end
 
+
+desc 'Sync users from CSV in the project'
+command :sync_users_with_csv_from_snapshot do |c|
+
+  c.desc 'Input filename'
+  c.flag [:i, :input]
+  default_value nil
+
+  c.desc 'snapshot filename'
+  c.flag [:s, :snapshot]
+  default_value nil
+  
+  c.desc 'Domain in which the users should be created'
+  c.flag [:d, :domain]
+
+  c.desc 'Blaclist of users. These users will not be touched during synchronization. Can be a comma separated values.'
+  c.flag [:b, :blacklist]
+
+  c.action do |global_options,options,args|
+    pid = global_options[:pid]
+    file_name = options[:input]
+    domain = options[:domain]
+    snapshot = options[:snapshot]
+
+    fail "Please specify file name with input data" if file_name.nil? 
+    fail "File #{file_name} does not exist" unless File.exist?(file_name)
+    fail "File #{snapshot} does not exist" unless File.exist?(snapshot)
+    fail "Please specify domain" if domain.nil? || domain.empty?
+
+    Gd::Commands.sync_users_in_project_from_csv_and_snapshot_file(file_name,snapshot, pid, domain, {
+      :black_list => options[:blacklist].split(',').map {|item| item.strip}
+    })
+  end
+end
+
+
 desc 'Run reports'
 command :run_reports do |c|
 

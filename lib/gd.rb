@@ -249,6 +249,7 @@ module Gd
 
 
     def self.roles_are_different(sf_user, gd_user)
+      fail "Wrong SF role" if sf_user[:role].nil? || sf_user[:role] == ""
       return true if gd_user.nil?
       sf_user[:role] != gd_user[:role]
     end
@@ -301,6 +302,41 @@ module Gd
       sync_users_in_project(sf_users_hash, pid, domain, options)
     end
 
+    
+    def self.sync_users_in_project_from_csv_and_snapshot_file(file_name,gooddata_snapshot_file, pid, domain, options={})
+       
+      
+      csv_users = {}
+      FasterCSV.foreach(file_name, :headers => true, :return_headers => false) do |line|
+        if (!line.headers.include?('role') || (!line['role'].nil? && line['role'] != NONE ))
+          csv_users[line['login']] = {
+            :first_name     => line['first_name'],
+            :last_name      => line['last_name'],
+            :login          => line['login'],
+            :sso_provider   => line['sso_provider'],
+            :role            => line['role']
+          }
+        end
+      end
+     
+      
+      gooddata_users = {}
+      FasterCSV.foreach(gooddata_snapshot_file, :headers => false, :return_headers => false) do |line|
+          gooddata_users[line[0]] = {
+            :login         => line[0],
+            :role          => line[1],
+            :uri           => line[2],
+            :status        => line[3]
+          }
+      end
+
+      sync_users_in_project_gooddata_snapshot(csv_users,gooddata_users, pid, domain, options)
+
+    end
+
+    
+    
+    
     def self.sync_users_in_project_from_csv(file_name, pid, domain, options={})
       csv_users = {}
       FasterCSV.foreach(file_name, :headers => true, :return_headers => false) do |line|
@@ -417,6 +453,119 @@ module Gd
       end
     end
 
+    
+    def self.sync_users_in_project_gooddata_snapshot(users_to_sync,gooddata_users, pid, domain, options)
+      black_list = options[:black_list] || []
+      
+      roles = roles = Gd::Commands.get_roles(pid)
+      
+      project_users = {}
+
+      gooddata_users.each do |k,gd_user|
+        # Role is already set in this one
+        role_name = nil
+        roles.find {|k,v| role_name = k if v[:uri] == gd_user[:role]}
+        gd_user[:role] = role_name 
+        project_users[gd_user[:login]] = gd_user
+      end
+
+      domain_users = {}
+      
+      Gd::Commands.get_domain_users(domain).each do |u|
+        blacklisted = black_list.any? { |black_list_item| u[:login].match(Regexp.new(Regexp.quote(black_list_item))) }
+        domain_users[u[:login]] = u unless blacklisted
+      end
+
+      users_to_invite = []
+      users_to_uninvite = []
+      users_to_change_role = []
+      users_to_sync.keys.each do |login|
+        user = users_to_sync[login]
+        # If there is a user in input file that is in project and has different roles, chage the role
+        users_to_change_role  << login if project_users.has_key?(login) && roles_are_different(user, project_users[login])
+        # If there is a user in input that is not in project or he is disabled in the project enable him
+        users_to_invite       << [login,user[:role]] if !project_users.has_key?(login) || project_users[login][:status] == "DISABLED"
+      end
+
+     
+      
+      project_users.keys.each do |login|
+        project_user = project_users[login]
+        # if there is a user in the project which are not in the input data && this user does not match black list and is enabled => remove him
+        blacklisted = black_list.any? { |black_list_item| login.match(Regexp.new(Regexp.quote(black_list_item))) }
+        users_to_uninvite << login if !users_to_sync.has_key?(login) && !blacklisted && project_user[:status] == "ENABLED"
+      end
+
+#       puts users_to_change_role.count      
+#       puts users_to_invite.count
+#       puts users_to_uninvite.count
+      
+
+      #EXECUTE
+      if users_to_invite.count > 0
+        puts "Inviting users"
+        users_to_invite.each do |value|
+          # Value contains name of the role from file
+          role_uri = ""
+          roles.find {|k,v| role_uri = v[:uri] if k == value[1]}
+          user = domain_users[value[0]]
+          if user.nil?
+            puts "Cannot add user #{value[0]}, user not in domain and probably cannot be created"
+            next
+          end
+          Gd::Commands.set_user_status(user[:uri], pid, "ENABLED",{:userRoles => [role_uri]})
+          puts "#{user[:login]}"
+        end
+      end
+      
+      # WE cannot get new status so ignoring
+      
+      # refresh users in project
+      # project_users = {}
+
+      # Refresh users in project so we have the latest info
+      # puts "Grabbing project users from GD"
+#       Gd::Commands.get_users(pid).each do |u|
+#         project_users[u[:login]] = u
+#         role_name = nil
+#         roles.find {|k,v| role_name = k if v[:uri] == u[:role]}
+#         u[:role] = role_name
+#       end
+
+      
+      if users_to_change_role.count > 0
+        puts "Changing roles"
+        users_to_change_role.each do |login|
+          user = project_users[login]
+          if user.nil?
+            puts "Role for User #{login} cannot be changed it is not in the project"
+            next
+          end
+          role_uri = roles[users_to_sync[login][:role]]
+          new_role_name = users_to_sync[login][:role]
+          if role_uri.nil? || role_uri == ""
+            puts "#{login} - Role could not be changed to #{new_role_name}"
+          else
+            puts "#{login} - from #{user[:role]} to #{new_role_name}"
+            puts "chci nastovovat #{role_uri[:user_uri]} a #{user[:uri]}"
+            Gd::Commands.set_role(role_uri[:user_uri], user[:uri])
+          end
+        end
+      end
+
+      if users_to_uninvite.count > 0
+        puts "Disabling users"
+        users_to_uninvite.each do |login|
+          user = project_users[login]
+          Gd::Commands.set_user_status(user[:uri], pid, "DISABLED")
+          puts "#{user[:login]}"
+        end
+      end
+    end
+
+    
+    
+    
     def self.delete_all_mufs(pid)
       mufs = GoodData.get("/gdc/md/#{pid}/query/userfilters")["query"]["entries"]
       mufs.each do |muf|
