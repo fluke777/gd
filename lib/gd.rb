@@ -547,7 +547,6 @@ module Gd
             puts "#{login} - Role could not be changed to #{new_role_name}"
           else
             puts "#{login} - from #{user[:role]} to #{new_role_name}"
-            puts "chci nastovovat #{role_uri[:user_uri]} a #{user[:uri]}"
             Gd::Commands.set_role(role_uri[:user_uri], user[:uri])
           end
         end
