@@ -16,6 +16,7 @@ spec = Gem::Specification.new do |s|
 bin/gd
 lib/gd_version.rb
 lib/gd.rb
+lib/mailer.rb
   )
   s.require_paths << 'lib'
   s.has_rdoc = true
@@ -32,4 +33,6 @@ lib/gd.rb
   s.add_dependency('activesupport')
   s.add_dependency('i18n')
   s.add_dependency('salesforce')
+  s.add_dependency('erb')
+  s.add_dependency('pony')
 end
