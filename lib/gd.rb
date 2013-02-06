@@ -6,6 +6,7 @@ require 'rainbow'
 require 'highline/import'
 require 'salesforce'
 
+
 module Gd
   module Commands
 
@@ -461,15 +462,22 @@ module Gd
       
       project_users = {}
 
+
+
       gooddata_users.each do |k,gd_user|
         # Role is already set in this one
         role_name = nil
         roles.find {|k,v| role_name = k if v[:uri] == gd_user[:role]}
+        
         gd_user[:role] = role_name 
         project_users[gd_user[:login]] = gd_user
+
       end
 
       domain_users = {}
+      
+      pp project_users
+      
       
       Gd::Commands.get_domain_users(domain).each do |u|
         blacklisted = black_list.any? { |black_list_item| u[:login].match(Regexp.new(Regexp.quote(black_list_item))) }
@@ -487,8 +495,8 @@ module Gd
         users_to_invite       << [login,user[:role]] if !project_users.has_key?(login) || project_users[login][:status] == "DISABLED"
       end
 
-     
-      
+#      
+#       
       project_users.keys.each do |login|
         project_user = project_users[login]
         # if there is a user in the project which are not in the input data && this user does not match black list and is enabled => remove him
@@ -496,27 +504,27 @@ module Gd
         users_to_uninvite << login if !users_to_sync.has_key?(login) && !blacklisted && project_user[:status] == "ENABLED"
       end
 
-#       puts users_to_change_role.count      
+       puts users_to_change_role.count      
 #       puts users_to_invite.count
 #       puts users_to_uninvite.count
       
 
       #EXECUTE
-      if users_to_invite.count > 0
-        puts "Inviting users"
-        users_to_invite.each do |value|
-          # Value contains name of the role from file
-          role_uri = ""
-          roles.find {|k,v| role_uri = v[:uri] if k == value[1]}
-          user = domain_users[value[0]]
-          if user.nil?
-            puts "Cannot add user #{value[0]}, user not in domain and probably cannot be created"
-            next
-          end
-          Gd::Commands.set_user_status(user[:uri], pid, "ENABLED",{:userRoles => [role_uri]})
-          puts "#{user[:login]}"
-        end
-      end
+#       if users_to_invite.count > 0
+#         puts "Inviting users"
+#         users_to_invite.each do |value|
+#           # Value contains name of the role from file
+#           role_uri = ""
+#           roles.find {|k,v| role_uri = v[:uri] if k == value[1]}
+#           user = domain_users[value[0]]
+#           if user.nil?
+#             puts "Cannot add user #{value[0]}, user not in domain and probably cannot be created"
+#             next
+#           end
+#           Gd::Commands.set_user_status(user[:uri], pid, "ENABLED",{:userRoles => [role_uri]})
+#           puts "#{user[:login]}"
+#         end
+#       end
       
       # WE cannot get new status so ignoring
       
@@ -533,33 +541,33 @@ module Gd
 #       end
 
       
-      if users_to_change_role.count > 0
-        puts "Changing roles"
-        users_to_change_role.each do |login|
-          user = project_users[login]
-          if user.nil?
-            puts "Role for User #{login} cannot be changed it is not in the project"
-            next
-          end
-          role_uri = roles[users_to_sync[login][:role]]
-          new_role_name = users_to_sync[login][:role]
-          if role_uri.nil? || role_uri == ""
-            puts "#{login} - Role could not be changed to #{new_role_name}"
-          else
-            puts "#{login} - from #{user[:role]} to #{new_role_name}"
-            Gd::Commands.set_role(role_uri[:user_uri], user[:uri])
-          end
-        end
-      end
-
-      if users_to_uninvite.count > 0
-        puts "Disabling users"
-        users_to_uninvite.each do |login|
-          user = project_users[login]
-          Gd::Commands.set_user_status(user[:uri], pid, "DISABLED")
-          puts "#{user[:login]}"
-        end
-      end
+#       if users_to_change_role.count > 0
+#         puts "Changing roles"
+#         users_to_change_role.each do |login|
+#           user = project_users[login]
+#           if user.nil?
+#             puts "Role for User #{login} cannot be changed it is not in the project"
+#             next
+#           end
+#           role_uri = roles[users_to_sync[login][:role]]
+#           new_role_name = users_to_sync[login][:role]
+#           if role_uri.nil? || role_uri == ""
+#             puts "#{login} - Role could not be changed to #{new_role_name}"
+#           else
+#             puts "#{login} - from #{user[:role]} to #{new_role_name}"
+#             Gd::Commands.set_role(role_uri[:user_uri], user[:uri])
+#           end
+#         end
+#       end
+# 
+#       if users_to_uninvite.count > 0
+#         puts "Disabling users"
+#         users_to_uninvite.each do |login|
+#           user = project_users[login]
+#           Gd::Commands.set_user_status(user[:uri], pid, "DISABLED")
+#           puts "#{user[:login]}"
+#         end
+#       end
     end
 
     

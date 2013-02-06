@@ -16,6 +16,7 @@ require 'gli'
 require 'gd_version'
 require 'gd'
 require 'fileutils'
+require 'mailer'
 
 include GLI
 
@@ -531,12 +532,44 @@ command :delete_all_mufs do |c|
   end
 end
 
+
+desc 'Test'
+command :test do |c|
+
+  
+  c.desc 'Path to template'
+  c.flag [:t, :template]
+  
+  c.action do |global_options,options,args|
+    
+#     #pid = global_options[:pid]
+#     mailer = Gd::Mailer.new(options[:template],nil) 
+#     data = Hash.new
+#     data["test"] = "kokos"
+#     
+#     puts mailer.get_message(data)
+# 
+#     
+#     data2 = Hash.new
+#     data2["test"] = "kokos2"
+#     
+#     puts mailer.get_message(data2)
+    
+    #mail(:to => email, :from => 'sf-validations@gooddata.com', :subject => "SUBJ", :body => "See attachment for details")
+    Gd::Mailer.mail(:to => "adrian.toman@gooddata.com", :from => 'testing@gooddata.com', :subject => "Testovaci message", :body => "Kukej lamo")
+
+    
+  end
+end
+
+
 pre do |global_options,command,options,args|
   # Pre logic here
   # Return true to proceed; false to abourt and not call the
   # chosen command
   # Use skips_pre before a command to skip this block
   # on that command only
+  
   
   
   if command
