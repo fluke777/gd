@@ -33,6 +33,5 @@ lib/mailer.rb
   s.add_dependency('activesupport')
   s.add_dependency('i18n')
   s.add_dependency('salesforce')
-  s.add_dependency('erb')
   s.add_dependency('pony')
 end
