@@ -22,7 +22,7 @@ module Gd
   
   module Mailer
    
-    self.mail(options = {})
+    def self.mail(options = {})
       begin
         Pony.mail(options)
       rescue
