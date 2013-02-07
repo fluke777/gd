@@ -16,7 +16,6 @@ require 'gli'
 require 'gd_version'
 require 'gd'
 require 'fileutils'
-require 'mailer'
 
 include GLI
 
@@ -447,7 +446,20 @@ command :sync_domain_with_csv do |c|
 
   c.desc 'Domain in which the users should be created'
   c.flag [:d, :domain]
-
+  
+  c.desc 'Template path'
+  c.flag [:template_path]
+  
+  c.desc 'Template text'
+  c.flag [:template]
+  
+  c.desc 'Email subject'
+  c.flag [:subject]
+  
+  c.desc 'Under what email adress should be email send'
+  c.flag [:from]
+  
+  
   c.action do |global_options,options,args|
 
     pid = global_options[:pid]
@@ -458,7 +470,7 @@ command :sync_domain_with_csv do |c|
     fail "Please specify input file name" if filename.nil? || filename.empty?
     fail "Input filename #{filename} does not exist" unless File.exist?(filename)
 
-    Gd::Commands::create_users_from_csv(filename, pid, domain)
+    Gd::Commands::create_users_from_csv(filename, pid, domain,options)
 
   end
 end
@@ -555,7 +567,7 @@ command :test do |c|
 #     
 #     puts mailer.get_message(data2)
     
-    #mail(:to => email, :from => 'sf-validations@gooddata.com', :subject => "SUBJ", :body => "See attachment for details")
+    mail(:to => email, :from => 'sf-validations@gooddata.com', :subject => "SUBJ", :body => "See attachment for details")
     Gd::Mailer.mail(:to => "adrian.toman@gooddata.com", :from => 'testing@gooddata.com', :subject => "Testovaci message", :body => "Kukej lamo")
 
     
