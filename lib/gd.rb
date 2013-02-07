@@ -5,7 +5,8 @@ require 'logger'
 require 'rainbow'
 require 'highline/import'
 require 'salesforce'
-
+require 'pony'
+require 'templater'
 
 module Gd
   module Commands
@@ -181,16 +182,19 @@ module Gd
       report.execute
     end
 
-    def self.create_users_from_csv(filename, pid, domain)
+    def self.create_users_from_csv(filename, pid, domain,options = {})
       result = []
       domain_users = {}
       Gd::Commands.get_domain_users(domain).each do |u|
         domain_users[u[:login]] = u
       end
       
+      templater = Gd::Templater.new(options) if (options[:template_path] != nil or options[:template] != nil)
+
+      
       FasterCSV.foreach(filename, :headers => true, :return_headers => false) do |row|
         hash_row = row.to_hash
-        result << create_user(hash_row, domain, pid) unless domain_users.has_key?(hash_row["login"])
+        result << create_user(hash_row, domain, pid, nil, templater, options) unless domain_users.has_key?(hash_row["login"])
       end
       result
     end
@@ -205,11 +209,11 @@ module Gd
       sf_users.reject {|user| domain_users.has_key?(user[:login])}.map {|user| create_user(user, domain, pid)}
     end
 
-    def self.create_user(users_data, domain, pid, roles=nil)
+    def self.create_user(users_data, domain, pid, roles = nil, templater = nil, options = {})
       users_data.symbolize_keys!
 
       password = users_data[:password] ? users_data[:password] : rand(10000000000000).to_s
-
+      
       account_setting = {
         :accountSetting => {
           :login              => users_data[:login],
@@ -223,8 +227,19 @@ module Gd
       
       begin
         GoodData.post("/gdc/account/domains/#{domain}/users", account_setting)
+        
+        # Looks like templater is not null, so we will be sending mail to customer
+        if (templater != nil) then
+          subject = options[:subject] || ""
+          from = options[:from] || "ps@gooddata.com"
+          body = templater.get_message(users_data)
+          to = users_data[:login]
+          mail(:to => to, :from => from, :subject => subject, :body => body)
+        end
+
         return [users_data[:login], "ok"]
       rescue RestClient::BadRequest => e
+        pp e
         STDERR.puts "User #{users_data[:login]} could not be created."
         return
       rescue RestClient::InternalServerError => e
@@ -454,6 +469,15 @@ module Gd
       end
     end
 
+    
+    def self.mail(options = {})
+      begin
+        Pony.mail(options)
+      rescue
+        fail "Email could not be sent"
+      end
+    end
+      
     
     def self.sync_users_in_project_gooddata_snapshot(users_to_sync,gooddata_users, pid, domain, options)
       black_list = options[:black_list] || []
