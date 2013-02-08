@@ -644,13 +644,11 @@ module Gd
     end
     
     def self.mail(options = {})
-      pp options
-      
-#       begin
-#         Pony.mail(options)
-#       rescue
-#         fail "Email could not be sent"
-#       end
+      begin
+        Pony.mail(options)
+      rescue
+        fail "Email could not be sent"
+      end
     end
     
     
