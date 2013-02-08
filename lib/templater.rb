@@ -4,16 +4,30 @@ module Gd
 
   class Templater
     
+    def json
+      @json
+    end
     
-    def initialize(options = {})
-      if (options[:template_path] != nil) then
-        template = File.read(options[:template_path])
+    def subject
+      @json["subject"] || ""
+    end
+    
+    def from
+      @json["from"] || "ps@gooddata.com"
+    end
+    
+    def initialize(json)
+      @json = json
+      if (!json["template_path"].empty?) then
+        puts "path"
+        text = File.read(json["template_path"])
       else 
-        template = options[:template]
+        puts "text"
+        text = json["template"]
       end
         
-      fail "Template for email is not defined" if template == nil
-      @erb = ERB.new(template.to_s.gsub(/^  /, ''))
+      fail "Template for email is not defined" if text.empty? 
+      @erb = ERB.new(text.to_s.gsub(/^  /, ''))
     end
     
     def get_message(data)

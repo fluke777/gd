@@ -359,6 +359,10 @@ command :sync_users_with_csv do |c|
 
   c.desc 'Blaclist of users. These users will not be touched during synchronization. Can be a comma separated values.'
   c.flag [:b, :blacklist]
+  
+  c.desc 'Path to file which is containing mail settings'
+  c.flag [:m, :mail_settings]
+  
 
   c.action do |global_options,options,args|
     pid = global_options[:pid]
@@ -369,9 +373,9 @@ command :sync_users_with_csv do |c|
     fail "File #{file_name} does not exist" unless File.exist?(file_name)
     fail "Please specify domain" if domain.nil? || domain.empty?
 
-    Gd::Commands.sync_users_in_project_from_csv(file_name, pid, domain, {
-      :black_list => options[:blacklist].split(',').map {|item| item.strip}
-    })
+    Gd::Commands.sync_users_in_project_from_csv(file_name, pid, domain,
+            {:black_list => options[:blacklist].split(',').map {|item| item.strip}}.merge(options))
+    
   end
 end
 
@@ -392,6 +396,9 @@ command :sync_users_with_csv_from_snapshot do |c|
 
   c.desc 'Blaclist of users. These users will not be touched during synchronization. Can be a comma separated values.'
   c.flag [:b, :blacklist]
+  
+  
+  
 
   c.action do |global_options,options,args|
     pid = global_options[:pid]
@@ -447,18 +454,8 @@ command :sync_domain_with_csv do |c|
   c.desc 'Domain in which the users should be created'
   c.flag [:d, :domain]
   
-  c.desc 'Template path'
-  c.flag [:template_path]
-  
-  c.desc 'Template text'
-  c.flag [:template]
-  
-  c.desc 'Email subject'
-  c.flag [:subject]
-  
-  c.desc 'Under what email adress should be email send'
-  c.flag [:from]
-  
+  c.desc 'Path to file which is containing mail settings'
+  c.flag [:m, :mail_settings]
   
   c.action do |global_options,options,args|
 
@@ -567,8 +564,10 @@ command :test do |c|
 #     
 #     puts mailer.get_message(data2)
     
-    mail(:to => email, :from => 'sf-validations@gooddata.com', :subject => "SUBJ", :body => "See attachment for details")
-    Gd::Mailer.mail(:to => "adrian.toman@gooddata.com", :from => 'testing@gooddata.com', :subject => "Testovaci message", :body => "Kukej lamo")
+      Gd::Commands.parse_mail_settings("/home/adrian.toman/ruby/gd_testing/mail_settings.json")
+    
+#     mail(:to => email, :from => 'sf-validations@gooddata.com', :subject => "SUBJ", :body => "See attachment for details")
+#     Gd::Mailer.mail(:to => "adrian.toman@gooddata.com", :from => 'testing@gooddata.com', :subject => "Testovaci message", :body => "Kukej lamo")
 
     
   end

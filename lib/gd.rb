@@ -189,8 +189,18 @@ module Gd
         domain_users[u[:login]] = u
       end
       
-      templater = Gd::Templater.new(options) if (options[:template_path] != nil or options[:template] != nil)
-
+      mail_settings = parse_mail_settings(options[:mail_settings]) if options[:mail_settings] != nil
+      
+      domain_template = nil
+      if (mail_settings != nil) then
+        mail_settings["mailing_lists"].each do |e|
+          case 
+              when e["domain"] != nil
+                  domain_template = Gd::Templater.new(e["domain"]) 
+                  puts "Mailing after user creation in domain inicialized"
+          end
+        end
+      end
       
       FasterCSV.foreach(filename, :headers => true, :return_headers => false) do |row|
         hash_row = row.to_hash
@@ -209,7 +219,7 @@ module Gd
       sf_users.reject {|user| domain_users.has_key?(user[:login])}.map {|user| create_user(user, domain, pid)}
     end
 
-    def self.create_user(users_data, domain, pid, roles = nil, templater = nil, options = {})
+    def self.create_user(users_data, domain, pid, roles = nil, templater, options = {})
       users_data.symbolize_keys!
 
       password = users_data[:password] ? users_data[:password] : rand(10000000000000).to_s
@@ -228,15 +238,7 @@ module Gd
       begin
         GoodData.post("/gdc/account/domains/#{domain}/users", account_setting)
         
-        # Looks like templater is not null, so we will be sending mail to customer
-        if (templater != nil) then
-          subject = options[:subject] || ""
-          from = options[:from] || "ps@gooddata.com"
-          body = templater.get_message(users_data)
-          to = users_data[:login]
-          mail(:to => to, :from => from, :subject => subject, :body => body)
-        end
-
+        send_mail_from_template(templater,users_data) if templater != nil
         return [users_data[:login], "ok"]
       rescue RestClient::BadRequest => e
         pp e
@@ -370,9 +372,35 @@ module Gd
 
     end
 
+
+    
+    
     def self.sync_users_in_project(users_to_sync, pid, domain, options)
       black_list = options[:black_list] || []
       
+      mail_settings = parse_mail_settings(options[:mail_settings]) if options[:mail_settings] != nil
+      
+      invite_template = nil
+      role_template = nil
+      delete_template = nil
+     
+      
+      if (mail_settings != nil) then
+        mail_settings["mailing_lists"].each do |e|
+          case 
+              when e["invite"] != nil
+                  invite_template = Gd::Templater.new(e["invite"]) 
+                  puts "Mailing after user invite inicialized"
+              when e["role"] != nil
+                  role_template = Gd::Templater.new(e["role"]) 
+                  puts "Mailing after role change inicialized"
+              when e["delete"] != nil
+                  delete_template = Gd::Templater.new(e["delete"]) 
+                  puts "Mailing after user disable inicialized"
+          end
+        end
+      end
+     
       roles = roles = Gd::Commands.get_roles(pid)
       project_users = {}
 
@@ -411,7 +439,7 @@ module Gd
         blacklisted = black_list.any? { |black_list_item| login.match(Regexp.new(Regexp.quote(black_list_item))) }
         users_to_uninvite << login if !users_to_sync.has_key?(login) && !blacklisted && project_user[:status] == "ENABLED"
       end
-
+      
       # EXECUTE
       if users_to_invite.count > 0
         puts "Inviting users"
@@ -424,7 +452,11 @@ module Gd
             puts "Cannot add user #{value[0]}, user not in domain and probably cannot be created"
             next
           end
+
           Gd::Commands.set_user_status(user[:uri], pid, "ENABLED",{:userRoles => [role_uri]})
+
+          user[:role] = value[1]
+          send_mail_from_template(invite_template,user) if invite_template != nil
           puts "#{user[:login]}"
         end
       end
@@ -443,6 +475,7 @@ module Gd
       if users_to_change_role.count > 0
         puts "Changing roles"
         users_to_change_role.each do |login|
+          
           user = project_users[login]
           if user.nil?
             puts "Role for User #{login} cannot be changed it is not in the project"
@@ -454,7 +487,12 @@ module Gd
             puts "#{login} - Role could not be changed to #{new_role_name}"
           else
             puts "#{login} - from #{user[:role]} to #{new_role_name}"
+            
             Gd::Commands.set_role(role_uri[:user_uri], user[:uri])
+            
+            user[:new_role] = new_role_name
+            user[:old_role] = user[:role]
+            send_mail_from_template(role_template,user) if role_template != nil
           end
         end
       end
@@ -464,19 +502,16 @@ module Gd
         users_to_uninvite.each do |login|
           user = project_users[login]
           Gd::Commands.set_user_status(user[:uri], pid, "DISABLED")
+
+          send_mail_from_template(delete_template,user) if delete_template != nil
+
           puts "#{user[:login]}"
         end
       end
     end
 
     
-    def self.mail(options = {})
-      begin
-        Pony.mail(options)
-      rescue
-        fail "Email could not be sent"
-      end
-    end
+
       
     
     def self.sync_users_in_project_gooddata_snapshot(users_to_sync,gooddata_users, pid, domain, options)
@@ -485,8 +520,6 @@ module Gd
       roles = roles = Gd::Commands.get_roles(pid)
       
       project_users = {}
-
-
 
       gooddata_users.each do |k,gd_user|
         # Role is already set in this one
@@ -500,7 +533,7 @@ module Gd
 
       domain_users = {}
       
-      pp project_users
+
       
       
       Gd::Commands.get_domain_users(domain).each do |u|
@@ -595,14 +628,31 @@ module Gd
     end
 
     
-    
-    
     def self.delete_all_mufs(pid)
       mufs = GoodData.get("/gdc/md/#{pid}/query/userfilters")["query"]["entries"]
       mufs.each do |muf|
         GoodData.delete(muf["link"])
       end
     end
+    
+    def self.parse_mail_settings(file)
+        File.open(file,"r") {|f| JSON.load(f)}
+    end
+    
+    def self.send_mail_from_template(templater,users_data)
+        mail(:to => users_data[:login], :from => templater.from, :subject => templater.subject, :body => templater.get_message(users_data))
+    end
+    
+    def self.mail(options = {})
+      pp options
+      
+#       begin
+#         Pony.mail(options)
+#       rescue
+#         fail "Email could not be sent"
+#       end
+    end
+    
     
   end
 end
