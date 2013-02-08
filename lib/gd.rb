@@ -219,7 +219,7 @@ module Gd
       sf_users.reject {|user| domain_users.has_key?(user[:login])}.map {|user| create_user(user, domain, pid)}
     end
 
-    def self.create_user(users_data, domain, pid, roles = nil, templater, options = {})
+    def self.create_user(users_data, domain, pid, roles = nil, templater = nil, options = {})
       users_data.symbolize_keys!
 
       password = users_data[:password] ? users_data[:password] : rand(10000000000000).to_s
