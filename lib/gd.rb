@@ -241,7 +241,6 @@ module Gd
         send_mail_from_template(templater,users_data) if templater != nil
         return [users_data[:login], "ok"]
       rescue RestClient::BadRequest => e
-        pp e
         STDERR.puts "User #{users_data[:login]} could not be created."
         return
       rescue RestClient::InternalServerError => e
