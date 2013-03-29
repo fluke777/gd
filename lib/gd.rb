@@ -209,8 +209,8 @@ module Gd
       result
     end
 
-    def self.create_users_from_sf(login, password, pid, domain)
-      sf_users = grab_users_from_sf(login, password, pid)
+    def self.create_users_from_sf(login, password, pid, domain, options={})
+      sf_users = grab_users_from_sf(login, password, pid, options)
       domain_users = {}
       Gd::Commands.get_domain_users(domain).each do |u|
         domain_users[u[:login]] = u
@@ -276,7 +276,7 @@ module Gd
       project_specific_sf_field = options[:project_specific_sf_field] || "Role_In_GD__c"
       project_agnostic_sf_field = options[:project_agnostic_sf_field] || "Role_In_GD_#{pid}__c"
       begin
-        client = Salesforce::Client.new(sf_login, sf_password)
+        client = Salesforce::Client.new(sf_login, sf_password, options)
       rescue RuntimeError => e
         puts e.message
         exit 1
