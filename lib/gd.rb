@@ -108,19 +108,34 @@ module Gd
     end
 
     def self.get_users(pid)
-      result = GoodData.get("/gdc/projects/#{pid}/users")
-      result["users"].map do |u|
-        as = u['user']
-        {
-          :login        => as['content']['email'].downcase,
-          :uri          => as['links']['self'],
-          :first_name   => as['content']['firstname'],
-          :last_name    => as['content']['lastname'],
-          :role         => as['content']['userRoles'].first,
-          :status       => as['content']['status']
-        }
-      end
-    end
+      users = []
+      finished = false
+      offset = 0
+      # Limit set to 1000 to be safe
+      limit = 1000
+      while (!finished) do 
+          result = GoodData.get("/gdc/projects/#{pid}/users?offset=#{offset}&limit=#{limit}")
+            result["users"].map do |u|
+            as = u['user']
+            users.push(
+              {
+                :login        => as['content']['email'],
+                :uri          => as['links']['self'],
+                :first_name   => as['content']['firstname'],
+                :last_name    => as['content']['lastname'],
+                :role         => as['content']['userRoles'].first,
+                :status       => as['content']['status']
+              }
+            )
+           end
+           if (result["users"].count == limit) then
+            offset = offset + limit
+           else
+             finished = true
+           end
+        end
+        users
+     end
 
     def self.get_domain_users(domain)
       next_uri = "/gdc/account/domains/#{domain}/users"
@@ -131,7 +146,7 @@ module Gd
         result['accountSettings']['items'].each do |u|
           as = u['accountSetting']
           users << {
-            :login        => as['login'].downcase,
+            :login        => as['login'],
             :uri          => as['links']['self'],
             :first_name   => as['firstName'],
             :last_name    => as['lastName']
@@ -186,7 +201,7 @@ module Gd
       result = []
       domain_users = {}
       Gd::Commands.get_domain_users(domain).each do |u|
-        domain_users[u[:login].downcase] = u
+        domain_users[u[:login]] = u
       end
       
       mail_settings = parse_mail_settings(options[:mail_settings]) if options[:mail_settings] != nil
@@ -204,19 +219,19 @@ module Gd
       
       FasterCSV.foreach(filename, :headers => true, :return_headers => false) do |row|
         hash_row = row.to_hash
-        result << create_user(hash_row, domain, pid, nil, domain_template, options) unless domain_users.has_key?(hash_row["login"].downcase)
+        result << create_user(hash_row, domain, pid, nil, domain_template, options) unless domain_users.has_key?(hash_row["login"])
       end
       result
     end
 
-    def self.create_users_from_sf(login, password, pid, domain, options={})
-      sf_users = grab_users_from_sf(login, password, pid, options)
+    def self.create_users_from_sf(login, password, pid, domain)
+      sf_users = grab_users_from_sf(login, password, pid)
       domain_users = {}
       Gd::Commands.get_domain_users(domain).each do |u|
-        domain_users[u[:login].downcase] = u
+        domain_users[u[:login]] = u
       end
       
-      sf_users.reject {|user| domain_users.has_key?(user[:login].downcase)}.map {|user| create_user(user, domain, pid)}
+      sf_users.reject {|user| domain_users.has_key?(user[:login])}.map {|user| create_user(user, domain, pid)}
     end
 
     def self.create_user(users_data, domain, pid, roles = nil, templater = nil, options = {})
@@ -226,7 +241,7 @@ module Gd
       
       account_setting = {
         :accountSetting => {
-          :login              => users_data[:login].downcase,
+          :login              => users_data[:login],
           :password           => password,
           :verifyPassword     => password,
           :firstName          => users_data[:first_name],
@@ -239,12 +254,12 @@ module Gd
         GoodData.post("/gdc/account/domains/#{domain}/users", account_setting)
         
         send_mail_from_template(templater,users_data) if templater != nil
-        return [users_data[:login].downcase, "ok"]
+        return [users_data[:login], "ok"]
       rescue RestClient::BadRequest => e
-        STDERR.puts "User #{users_data[:login].downcase} could not be created."
+        STDERR.puts "User #{users_data[:login]} could not be created."
         return
       rescue RestClient::InternalServerError => e
-        STDERR.puts "User #{users_data[:login].downcase} could not be created and returned 500."
+        STDERR.puts "User #{users_data[:login]} could not be created and returned 500."
         return
       end
     end
@@ -276,7 +291,7 @@ module Gd
       project_specific_sf_field = options[:project_specific_sf_field] || "Role_In_GD__c"
       project_agnostic_sf_field = options[:project_agnostic_sf_field] || "Role_In_GD_#{pid}__c"
       begin
-        client = Salesforce::Client.new(sf_login, sf_password, options)
+        client = Salesforce::Client.new(sf_login, sf_password)
       rescue RuntimeError => e
         puts e.message
         exit 1
@@ -301,10 +316,10 @@ module Gd
         {
           :first_name     => line[:FirstName],
           :last_name      => line[:LastName],
-          :login          => line[:Email].downcase,
+          :login          => line[:Email],
           :sso_provider   => "SALESFORCE",
           :role           => line[field.to_sym],
-          :login          => line[:Email].downcase
+          :login          => line[:Email]
         }
       end
 
@@ -314,7 +329,7 @@ module Gd
       sf_users = grab_users_from_sf(sf_login, sf_password, pid, options)
       sf_users_hash = {}
       sf_users.each do |user|
-        sf_users_hash[user[:login].downcase] = user if !user[:role].nil? && user[:role] != NONE
+        sf_users_hash[user[:login]] = user if !user[:role].nil? && user[:role] != NONE
       end
       sync_users_in_project(sf_users_hash, pid, domain, options)
     end
@@ -326,10 +341,10 @@ module Gd
       csv_users = {}
       FasterCSV.foreach(file_name, :headers => true, :return_headers => false) do |line|
         if (!line.headers.include?('role') || (!line['role'].nil? && line['role'] != NONE ))
-          csv_users[line['login'].downcase] = {
+          csv_users[line['login']] = {
             :first_name     => line['first_name'],
             :last_name      => line['last_name'],
-            :login          => line['login'].downcase,
+            :login          => line['login'],
             :sso_provider   => line['sso_provider'],
             :role            => line['role']
           }
@@ -339,8 +354,8 @@ module Gd
       
       gooddata_users = {}
       FasterCSV.foreach(gooddata_snapshot_file, :headers => false, :return_headers => false) do |line|
-          gooddata_users[line[0].downcase] = {
-            :login         => line[0].downcase,
+          gooddata_users[line[0]] = {
+            :login         => line[0],
             :role          => line[1],
             :uri           => line[2],
             :status        => line[3]
@@ -358,10 +373,10 @@ module Gd
       csv_users = {}
       FasterCSV.foreach(file_name, :headers => true, :return_headers => false) do |line|
         if (!line.headers.include?('role') || (!line['role'].nil? && line['role'] != NONE ))
-          csv_users[line['login'].downcase] = {
+          csv_users[line['login']] = {
             :first_name     => line['first_name'],
             :last_name      => line['last_name'],
-            :login          => line['login'].downcase,
+            :login          => line['login'],
             :sso_provider   => line['sso_provider'],
             :role            => line['role']
           }
@@ -403,12 +418,10 @@ module Gd
       roles = roles = Gd::Commands.get_roles(pid)
       project_users = {}
 
-
-
       # puts "Grabbing project users from GD"
       # transform users to a way that it can be searched fast + adding some additional info
       Gd::Commands.get_users(pid).each do |u|
-        project_users[u[:login].downcase] = u
+        project_users[u[:login]] = u
         role_name = nil
         roles.find {|k,v| role_name = k if v[:uri] == u[:role]}
         u[:role] = role_name
@@ -417,8 +430,8 @@ module Gd
       domain_users = {}
       
       Gd::Commands.get_domain_users(domain).each do |u|
-        blacklisted = black_list.any? { |black_list_item| u[:login].downcase.match(Regexp.new(Regexp.quote(black_list_item))) }
-        domain_users[u[:login].downcase] = u unless blacklisted
+        blacklisted = black_list.any? { |black_list_item| u[:login].match(Regexp.new(Regexp.quote(black_list_item))) }
+        domain_users[u[:login]] = u unless blacklisted
       end
 
       users_to_invite = []
@@ -458,7 +471,7 @@ module Gd
 
           user[:role] = value[1]
           send_mail_from_template(invite_template,user) if invite_template != nil
-          puts "#{user[:login].downcase}"
+          puts "#{user[:login]}"
         end
       end
       # refresh users in project
@@ -467,7 +480,7 @@ module Gd
       # Refresh users in project so we have the latest info
       # puts "Grabbing project users from GD"
       Gd::Commands.get_users(pid).each do |u|
-        project_users[u[:login].downcase] = u
+        project_users[u[:login]] = u
         role_name = nil
         roles.find {|k,v| role_name = k if v[:uri] == u[:role]}
         u[:role] = role_name
@@ -485,9 +498,9 @@ module Gd
           role_uri = roles[users_to_sync[login][:role]]
           new_role_name = users_to_sync[login][:role]
           if role_uri.nil?
-            puts "#{login.downcase} - Role could not be changed to #{new_role_name}"
+            puts "#{login} - Role could not be changed to #{new_role_name}"
           else
-            puts "#{login.downcase} - from #{user[:role]} to #{new_role_name}"
+            puts "#{login} - from #{user[:role]} to #{new_role_name}"
             
             Gd::Commands.set_role(role_uri[:user_uri], user[:uri])
             
@@ -506,7 +519,7 @@ module Gd
 
           send_mail_from_template(delete_template,user) if delete_template != nil
 
-          puts "#{user[:login].downcase}"
+          puts "#{user[:login]}"
         end
       end
     end
@@ -528,7 +541,7 @@ module Gd
         roles.find {|k,v| role_name = k if v[:uri] == gd_user[:role]}
         
         gd_user[:role] = role_name 
-        project_users[gd_user[:login].downcase] = gd_user
+        project_users[gd_user[:login]] = gd_user
 
       end
 
@@ -538,8 +551,8 @@ module Gd
       
       
       Gd::Commands.get_domain_users(domain).each do |u|
-        blacklisted = black_list.any? { |black_list_item| u[:login].downcase.match(Regexp.new(Regexp.quote(black_list_item))) }
-        domain_users[u[:login].downcase] = u unless blacklisted
+        blacklisted = black_list.any? { |black_list_item| u[:login].match(Regexp.new(Regexp.quote(black_list_item))) }
+        domain_users[u[:login]] = u unless blacklisted
       end
 
       users_to_invite = []
@@ -641,7 +654,7 @@ module Gd
     end
     
     def self.send_mail_from_template(templater,users_data)
-        mail(:to => users_data[:login].downcase, :from => templater.from, :subject => templater.subject, :body => templater.get_message(users_data))
+        mail(:to => users_data[:login], :from => templater.from, :subject => templater.subject, :body => templater.get_message(users_data))
     end
     
     def self.mail(options = {})

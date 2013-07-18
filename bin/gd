@@ -24,17 +24,17 @@ program_desc 'GoodData CLI -> experimental - when it is reasonably complete it w
 version Gd::VERSION
 
 desc 'Project pid where you want to work'
-default_value nil
+default_value ENV['PID']
 arg_name 'pid'
 flag [:i,:pid]
 
 desc 'User name'
-default_value nil
+default_value ENV['GD_USERNAME']
 arg_name 'user'
 flag [:u,:user]
 
 desc 'Password'
-default_value nil
+default_value ENV['GD_PASSWORD']
 arg_name 'password'
 flag [:p,:password]
 
