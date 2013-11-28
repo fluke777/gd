@@ -30,7 +30,7 @@ lib/mailer.rb
   s.add_dependency('rainbow')
   s.add_dependency('gli')
   s.add_dependency('highline')
-  s.add_dependency('activesupport', '~> 3.0.0')
+  s.add_dependency('activesupport', '> 3.0.0')
   s.add_dependency('i18n')
   s.add_dependency('salesforce')
   s.add_dependency('pony')
