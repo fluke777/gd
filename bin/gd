@@ -12,6 +12,7 @@ unless File.respond_to? :realpath
 end
 $: << File.expand_path(File.dirname(File.realpath(__FILE__)) + '/../lib')
 require 'rubygems'
+require 'bundler/setup'
 require 'gli'
 require 'gd_version'
 require 'gd'
@@ -37,6 +38,14 @@ desc 'Password'
 default_value ENV['GD_PASSWORD']
 arg_name 'password'
 flag [:p,:password]
+
+
+desc 'Server'
+default_value ENV['GD_SERVER']
+arg_name 'server'
+flag [:s,:server]
+
+
 
 desc 'Enable http logger to STDOUT'
 default_value false
@@ -561,8 +570,7 @@ pre do |global_options,command,options,args|
     default_project = projects.find {|p| p["default"]}
 
     GoodData.logger = Logger.new(STDOUT) if global_options[:logger]
-
-    GoodData.connect global_options[:user] || default_user["login"], global_options[:password] || default_user["password"], nil, :timeout => 0
+    GoodData.connect global_options[:user] || default_user["login"], global_options[:password] || default_user["password"], global_options["server"], :timeout => 30
     if global_options[:pid].nil?
       global_options[:pid] = default_project["pid"] if default_project
     end
