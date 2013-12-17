@@ -26,7 +26,7 @@ lib/mailer.rb
   s.executables << 'gd'
   s.add_development_dependency('rdoc')
   s.add_dependency('rake')
-  s.add_dependency('gooddata')
+  s.add_dependency('gooddata', '=0.5.16')
   s.add_dependency('rainbow')
   s.add_dependency('gli', '< 2.0.0')
   s.add_dependency('highline')
