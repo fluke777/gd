@@ -12,7 +12,6 @@ unless File.respond_to? :realpath
 end
 $: << File.expand_path(File.dirname(File.realpath(__FILE__)) + '/../lib')
 require 'rubygems'
-require 'bundler/setup'
 require 'gli'
 require 'gd_version'
 require 'gd'
