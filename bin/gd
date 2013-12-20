@@ -567,9 +567,9 @@ pre do |global_options,command,options,args|
     default_user = users.find {|u| u["login"] == global_options[:user]} if global_options[:user] && !global_options[:password]
 
     default_project = projects.find {|p| p["default"]}
-
+    
     GoodData.logger = Logger.new(STDOUT) if global_options[:logger]
-    GoodData.connect global_options[:user] || default_user["login"], global_options[:password] || default_user["password"], global_options["server"], :timeout => 30
+    GoodData.connect global_options[:user] || default_user["login"], global_options[:password] || default_user["password"], global_options[:server], :timeout => 30
     if global_options[:pid].nil?
       global_options[:pid] = default_project["pid"] if default_project
     end
